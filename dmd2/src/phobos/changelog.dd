@@ -1,0 +1,21 @@
+Ddoc
+
+$(COMMENT Pending changelog for 2.073. This will get copied to dlang.org and
+    cleared when master gets merged into stable.
+)
+
+$(BUGSTITLE Library Changes,
+)
+
+$(BUGSTITLE Library Changes,
+)
+
+Macros:
+    TITLE=Change Log
+
+    BUGSTITLE = <div class="bugsfixed">$(H4 $1) $(OL $2 )</div>
+
+    RELATIVE_LINK2=<a href="#$1">$+</a>
+    LNAME2=<a class="anchor" title="Permalink to this section" id="$1" href="#$1">$+</a>
+
+    BOOKTABLE = <table><caption>$1</caption>$+</table>
