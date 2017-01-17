@@ -95,6 +95,30 @@ public alias OperatorDivide = FixedToken!(TokenKind.OPERATOR_DIVIDE, "/");
 public alias OperatorOpenParenthesis = FixedToken!(TokenKind.OPERATOR_OPEN_PARENTHESIS, "(");
 public alias OperatorCloseParenthesis = FixedToken!(TokenKind.OPERATOR_CLOSE_PARENTHESIS, ")");
 
+public class Identifier : Token {
+    private string source;
+
+    public this(string source, size_t start) {
+        this.source = source;
+        _start = start;
+        _end = start + source.length - 1;
+    }
+
+    public override string getSource() {
+        return source;
+    }
+
+    public override TokenKind getKind() {
+        return TokenKind.IDENTIFIER;
+    }
+
+    mixin sourceIndexFields;
+
+    public override string toString() {
+        return format("%s(%s)", getKind(), source);
+    }
+}
+
 public class LiteralString : Token {
     private string source;
 
@@ -258,4 +282,45 @@ public class Eof : Token {
     public override string toString() {
         return "EOF()";
     }
+}
+
+public alias FixedTokenCtor = Token function(size_t);
+
+private enum FixedTokenCtor[string] KEYWORD_CTOR_MAP = buildFixedTokenCtorMap!(
+    KeywordVar, KeywordDone, KeywordElse, KeywordFloat, KeywordPrint, KeywordWhile, KeywordIf,
+    KeywordEndif, KeywordInt, KeywordRead, KeywordDo, KeywordThen, KeywordString
+);
+
+private enum FixedTokenCtor[string] OPERATOR_CTOR_MAP = buildFixedTokenCtorMap!(
+    OperatorPlus, OperatorMinus, OperatorTimes, OperatorDivide, OperatorOpenParenthesis, OperatorCloseParenthesis
+);
+
+private FixedTokenCtor[string] buildFixedTokenCtorMap(Token, Tokens...)() {
+    static if (is(Token == FixedToken!(kind, source), TokenKind kind, string source)) {
+        static if (Tokens.length > 0) {
+            auto map = buildFixedTokenCtorMap!Tokens();
+        } else {
+            FixedTokenCtor[string] map;
+        }
+        map[source] = (size_t start) => new Token(start);
+        return map;
+    } else {
+        static assert (0);
+    }
+}
+
+public bool isKeyword(string identifier) {
+    return (identifier in KEYWORD_CTOR_MAP) !is null;
+}
+
+public Token createKeyword(string source, size_t start) {
+    return KEYWORD_CTOR_MAP[source](start);
+}
+
+public bool isOperator(string identifier) {
+    return (identifier in OPERATOR_CTOR_MAP) !is null;
+}
+
+public Token createOperator(string source, size_t start) {
+    return OPERATOR_CTOR_MAP[source](start);
 }
