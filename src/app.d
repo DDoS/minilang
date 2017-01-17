@@ -1,3 +1,4 @@
+import std.getopt : getopt, config;
 import std.stdio : writeln;
 import std.file : readText;
 
@@ -14,7 +15,7 @@ int main(string[] args) {
     }
     switch (args[0]) {
         case "parse":
-            return parse(args[1 .. $]);
+            return parse(args);
         default:
             writeln("Unknown command: ", args[0]);
             return 1;
@@ -22,6 +23,15 @@ int main(string[] args) {
 }
 
 private int parse(string[] args) {
+    // Get the flags for extra debug output
+    bool printTokens = false, printSyntax = false;
+    args.getopt(
+        config.caseSensitive,
+        "tokens|t", &printTokens,
+        "ast|s", &printSyntax
+    );
+    // Remove the parse command from the arguments
+    args = args[1 .. $];
     // Check that we have the file to parse as an argument
     if (args.length <= 0) {
         writeln("Expected a file path");
@@ -39,11 +49,15 @@ private int parse(string[] args) {
     auto lexer = new Lexer(reader);
     try {
         while (lexer.has()) {
-            writeln(lexer.head().toString());
+            if (printTokens) {
+                writeln(lexer.head().toString());
+            }
             lexer.advance();
         }
+        writeln("VALID");
         return 0;
     } catch (SourceException exception) {
+        writeln("INVALID");
         writeln(exception.getErrorInformation(source).toString());
         return 1;
     }
