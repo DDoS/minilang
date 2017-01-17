@@ -1,3 +1,3 @@
 #/bin/bash
 
-./bin/test
+./bin/minilang parse "$1"
