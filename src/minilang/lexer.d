@@ -46,28 +46,34 @@ public class Lexer {
         savedPositions.length--;
     }
 
-    public Token next() {
-        Token token = null;
-        while (reader.has() && token is null) {
-            while (reader.head().isWhiteSpace()) {
+    private Token next() {
+        while (reader.has()) {
+            if (reader.head().isWhiteSpace()) {
                 // Remove whitespace
                 reader.advance();
+                continue;
+            }
+            if (reader.head() == ':') {
+                // Colon
+                reader.advance();
+                return new Colon(reader.count - 1);
             }
             if (reader.head() == ';') {
                 // Semicolon
                 reader.advance();
-                token = new Semicolon(reader.count - 1);
-            } else if (reader.head().isIdentifierStart()) {
+                return new Semicolon(reader.count - 1);
+            }
+            if (reader.head().isIdentifierStart()) {
                 // Identifier or keyword
                 auto position = reader.count;
                 reader.collect();
                 auto identifier = reader.collectIdentifierBody();
                 if (identifier.isKeyword()) {
-                    token = identifier.createKeyword(position);
-                } else {
-                    token = new Identifier(identifier, position);
+                    return identifier.createKeyword(position);
                 }
-            } else if (reader.head().isOperator()) {
+                return new Identifier(identifier, position);
+            }
+            if (reader.head().isOperator()) {
                 // Operator or line comment
                 auto position = reader.count;
                 auto operator = reader.head();
@@ -75,19 +81,24 @@ public class Lexer {
                 if (operator == '/' && reader.head() == '/') {
                     reader.advance();
                     reader.consumeLineCommentText();
-                } else {
-                    token = operator.createOperator(position);
+                    continue;
                 }
-            } else if (reader.head() == '"') {
-                auto position = reader.count;
-                token = new LiteralString(reader.collectLiteralString(), position);
-            } else if (reader.head().isDecimalDigit()) {
-                token = reader.collectLiteralNumber();
-            } else {
-                throw new SourceException("Unexpected character", reader.head(), reader.count);
+                return operator.createOperator(position);
             }
+            if (reader.head() == '"') {
+                // String literal
+                auto position = reader.count;
+                return new LiteralString(reader.collectLiteralString(), position);
+            }
+            if (reader.head().isDecimalDigit()) {
+                // Int or float literal
+                return reader.collectLiteralNumber();
+            }
+            // Unknown
+            throw new SourceException("Unexpected character", reader.head(), reader.count);
         }
-        return token is null ? new Eof(reader.count) : token;
+        // End of file
+        return new Eof(reader.count);
     }
 }
 
@@ -141,16 +152,21 @@ private string collectLiteralString(SourceReader reader) {
 
 private Token collectLiteralNumber(SourceReader reader) {
     auto position = reader.count;
+    // The number must have a decimal digit sequence first
     if (reader.head() == '0') {
         reader.collect();
-        // Shoulde be just a zero
+        // If it starts with zero it should just be a zero
         if (reader.head().isDecimalDigit()) {
             throw new SourceException("Cannot have 0 as a leading digit", reader.head(), reader.count);
         }
-        return new LiteralInt(reader.popCollected(), position);
+        // Check for a decimal separator, which makes it a float
+        if (reader.head() != '.') {
+            // Else it's just the 0 literal
+            return new LiteralInt(reader.popCollected(), position);
+        }
+    } else {
+        reader.collectDigitSequence();
     }
-    // The number must have a decimal digit sequence first
-    reader.collectDigitSequence();
     // Now we can have a decimal separator here, making it a float
     if (reader.head() == '.') {
         reader.collect();

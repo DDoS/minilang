@@ -7,6 +7,7 @@ import minilang.chars;
 import minilang.source;
 
 public enum TokenKind {
+    COLON,
     SEMICOLON,
 
     IDENTIFIER,
@@ -29,6 +30,7 @@ public enum TokenKind {
     OPERATOR_MINUS,
     OPERATOR_TIMES,
     OPERATOR_DIVIDE,
+    OPERATOR_ASSIGN,
     OPERATOR_OPEN_PARENTHESIS,
     OPERATOR_CLOSE_PARENTHESIS,
 
@@ -67,11 +69,12 @@ private template FixedToken(TokenKind kind, string source) if (source.length > 0
         mixin sourceIndexFields;
 
         public override string toString() {
-            return format("%s(%s)", kind.to!string(), source);
+            return kind.to!string();
         }
     }
 }
 
+public alias Colon = FixedToken!(TokenKind.COLON, ":");
 public alias Semicolon = FixedToken!(TokenKind.SEMICOLON, ";");
 
 public alias KeywordVar = FixedToken!(TokenKind.KEYWORD_VAR, "var");
@@ -92,6 +95,7 @@ public alias OperatorPlus = FixedToken!(TokenKind.OPERATOR_PLUS, "+");
 public alias OperatorMinus = FixedToken!(TokenKind.OPERATOR_MINUS, "-");
 public alias OperatorTimes = FixedToken!(TokenKind.OPERATOR_TIMES, "*");
 public alias OperatorDivide = FixedToken!(TokenKind.OPERATOR_DIVIDE, "/");
+public alias OperatorAssign = FixedToken!(TokenKind.OPERATOR_ASSIGN, "=");
 public alias OperatorOpenParenthesis = FixedToken!(TokenKind.OPERATOR_OPEN_PARENTHESIS, "(");
 public alias OperatorCloseParenthesis = FixedToken!(TokenKind.OPERATOR_CLOSE_PARENTHESIS, ")");
 
@@ -292,7 +296,8 @@ private enum FixedTokenCtor[string] KEYWORD_CTOR_MAP = buildFixedTokenCtorMap!(
 );
 
 private enum FixedTokenCtor[string] OPERATOR_CTOR_MAP = buildFixedTokenCtorMap!(
-    OperatorPlus, OperatorMinus, OperatorTimes, OperatorDivide, OperatorOpenParenthesis, OperatorCloseParenthesis
+    OperatorPlus, OperatorMinus, OperatorTimes, OperatorDivide, OperatorAssign,
+    OperatorOpenParenthesis, OperatorCloseParenthesis
 );
 
 private FixedTokenCtor[string] buildFixedTokenCtorMap(Token, Tokens...)() {
