@@ -215,16 +215,16 @@ public class LiteralInt : Token {
 
     unittest {
         bool overflow;
-        auto a = new SignedIntegerLiteral("42432", 0);
+        auto a = new LiteralInt("42432", 0);
         assert(a.getValue(overflow) == 42432);
         assert(!overflow);
-        auto b = new SignedIntegerLiteral("9223372036854775808", 0);
+        auto b = new LiteralInt("9223372036854775808", 0);
         b.getValue(overflow);
         assert(overflow);
     }
 }
 
-public class FloatLiteral : Token {
+public class LiteralFloat : Token {
     private string source;
 
     public this(string source, size_t start) {
@@ -253,12 +253,12 @@ public class FloatLiteral : Token {
 
     unittest {
         bool overflow;
-        auto a = new FloatLiteral("62.33352", 0);
+        auto a = new LiteralFloat("62.33352", 0);
         assert(a.getValue(overflow) == 62.33352);
         assert(!overflow);
-        auto b = new FloatLiteral("1.1", 0);
+        auto b = new LiteralFloat("1.1", 0);
         assert(b.getValue(overflow) == 1.1);
-        auto c = new FloatLiteral("0.1", 0);
+        auto c = new LiteralFloat("0.1", 0);
         assert(c.getValue(overflow) == 0.1);
     }
 }
@@ -317,10 +317,10 @@ public Token createKeyword(string source, size_t start) {
     return KEYWORD_CTOR_MAP[source](start);
 }
 
-public bool isOperator(string identifier) {
-    return (identifier in OPERATOR_CTOR_MAP) !is null;
+public bool isOperator(char c) {
+    return (c.to!string() in OPERATOR_CTOR_MAP) !is null;
 }
 
-public Token createOperator(string source, size_t start) {
-    return OPERATOR_CTOR_MAP[source](start);
+public Token createOperator(char source, size_t start) {
+    return OPERATOR_CTOR_MAP[source.to!string()](start);
 }
