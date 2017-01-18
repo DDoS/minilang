@@ -23,8 +23,8 @@ else
     exit 1
 fi
 
-# This is the DMD command to build into the bin folder
-DMD_RUN="$DMD -odbin -ofbin/minilang"
+# This is the DMD command to build with unit tests into the bin folder
+DMD_RUN="$DMD -unittest -odbin -ofbin/minilang"
 
 # Invoke DMD to compile to the bin directory
 eval "$DMD_RUN src/app.d src/minilang/chars.d src/minilang/source.d src/minilang/token.d src/minilang/lexer.d"

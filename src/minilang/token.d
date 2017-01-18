@@ -256,14 +256,12 @@ public class LiteralFloat : Token {
     }
 
     unittest {
-        bool overflow;
         auto a = new LiteralFloat("62.33352", 0);
-        assert(a.getValue(overflow) == 62.33352);
-        assert(!overflow);
+        assert(a.getValue() == 62.33352);
         auto b = new LiteralFloat("1.1", 0);
-        assert(b.getValue(overflow) == 1.1);
+        assert(b.getValue() == 1.1);
         auto c = new LiteralFloat("0.1", 0);
-        assert(c.getValue(overflow) == 0.1);
+        assert(c.getValue() == 0.1);
     }
 }
 
