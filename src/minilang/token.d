@@ -52,7 +52,7 @@ public interface Token {
 }
 
 private template FixedToken(TokenKind kind, string source) if (source.length > 0) {
-    public class FixedToken : Token {
+    private class FixedToken : Token {
         public this(size_t start) {
             _start = start;
             _end = start + source.length - 1;

@@ -1,0 +1,19 @@
+/// Factorial of n // Weird comment
+
+// Declare n, the factorial of N and the index int
+var n: int;
+var factN: int;
+var i: int;
+// Read the value of n
+read n;
+// Factorial of 0
+factN = 1;
+i = 0;
+// Multiply the factorial of zero for each i in n
+while n - i do
+	i = i + 1;
+    factN = factN * i;
+done
+// Print the result
+print factN;
+// Weird trailing comment

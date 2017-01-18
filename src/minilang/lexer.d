@@ -110,10 +110,12 @@ private string collectIdentifierBody(SourceReader reader) {
 }
 
 private void consumeLineCommentText(SourceReader reader) {
-    while (!reader.head().isNewLineChar()) {
+    while (reader.has() && !reader.head().isNewLineChar()) {
         reader.advance();
     }
-    reader.consumeNewLine();
+    if (reader.has()) {
+        reader.consumeNewLine();
+    }
 }
 
 private void consumeNewLine(SourceReader reader) {
@@ -138,7 +140,7 @@ private string collectLiteralString(SourceReader reader) {
     reader.collect();
     // String contents
     auto ignoreNextQuote = false;
-    while (ignoreNextQuote || reader.head() != '"') {
+    while (ignoreNextQuote || reader.has() && reader.head() != '"') {
         ignoreNextQuote = reader.head() == '\\';
         reader.collect();
     }
@@ -165,6 +167,7 @@ private Token collectLiteralNumber(SourceReader reader) {
             return new LiteralInt(reader.popCollected(), position);
         }
     } else {
+        // Normal digit sequence not starting with a zero
         reader.collectDigitSequence();
     }
     // Now we can have a decimal separator here, making it a float
