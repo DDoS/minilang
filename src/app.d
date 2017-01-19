@@ -4,6 +4,7 @@ import std.file : readText;
 
 import minilang.source : SourceReader, SourceException;
 import minilang.lexer : Lexer;
+import minilang.parser : parseProgram;
 
 int main(string[] args) {
     // Remove the executable name from the arguments
@@ -49,11 +50,17 @@ private int parse(string[] args) {
     auto reader = new SourceReader(source);
     auto lexer = new Lexer(reader);
     try {
-        while (lexer.has()) {
-            if (printTokens) {
+        if (printTokens) {
+            lexer.savePosition();
+            while (lexer.has()) {
                 writeln(lexer.head().toString());
+                lexer.advance();
             }
-            lexer.advance();
+            lexer.restorePosition();
+        }
+        auto program = lexer.parseProgram();
+        if (printSyntax) {
+            writeln(program.toString());
         }
         writeln("VALID");
         return 0;

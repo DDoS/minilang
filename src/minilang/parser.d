@@ -137,6 +137,7 @@ private Declaration parseDeclaration(Lexer tokens) {
             throw new SourceException("Expected \"string\", \"int\" or \"float\"", tokens.head());
         }
     }
+    tokens.advance();
     // Ends with ';'
     auto end = tokens.parseSemicolon();
     return new Declaration(type, name, start, end);
@@ -210,11 +211,12 @@ private IfStmt parseIfStatement(Lexer tokens) {
     // Followed by statements
     auto statements = tokens.parseStatements();
     // Optionally followed by "else"
-    ElseBlock elseBlock = null;
+    IfStmt.Else elseBlock = null;
     if (tokens.head().kind == TokenKind.KEYWORD_ELSE) {
         tokens.advance();
-        auto statements = tokens.parseStatements();
-        elseBlock = new ElseBlock(statements);
+        // Followed by statements
+        auto elseStatements = tokens.parseStatements();
+        elseBlock = new IfStmt.Else(elseStatements);
     }
     // Ends with "endif"
     if (tokens.head().kind != TokenKind.KEYWORD_ENDIF) {
@@ -223,4 +225,75 @@ private IfStmt parseIfStatement(Lexer tokens) {
     auto end = tokens.head().end;
     tokens.advance();
     return new IfStmt(condition, statements, elseBlock, start, end);
+}
+
+private WhileStmt parseWhileStatement(Lexer tokens) {
+    // Starts with "while"
+    if (tokens.head().kind != TokenKind.KEYWORD_WHILE) {
+        throw new SourceException("Expected \"while\"", tokens.head());
+    }
+    auto start = tokens.head().start;
+    tokens.advance();
+    // Followed by an expression
+    auto condition = tokens.parseExpression();
+    // Followed by "do"
+    if (tokens.head().kind != TokenKind.KEYWORD_DO) {
+        throw new SourceException("Expected \"do\"", tokens.head());
+    }
+    tokens.advance();
+    // Followed by statements
+    auto statements = tokens.parseStatements();
+    // Ends with "done"
+    if (tokens.head().kind != TokenKind.KEYWORD_DONE) {
+        throw new SourceException("Expected \"done\"", tokens.head());
+    }
+    auto end = tokens.head().end;
+    tokens.advance();
+    return new WhileStmt(condition, statements, start, end);
+}
+
+private Statement tryParseStatement(Lexer tokens) {
+    switch (tokens.head().kind) with (TokenKind) {
+        case KEYWORD_READ: {
+            return tokens.parseReadStatement();
+        }
+        case KEYWORD_PRINT: {
+            return tokens.parsePrintStatement();
+        }
+        case IDENTIFIER: {
+            return tokens.parseAssignment();
+        }
+        case KEYWORD_IF: {
+            return tokens.parseIfStatement();
+        }
+        case KEYWORD_WHILE: {
+            return tokens.parseWhileStatement();
+        }
+        default: {
+            return null;
+        }
+    }
+}
+
+private Statement[] parseStatements(Lexer tokens) {
+    Statement[] statements;
+    while (true) {
+        auto statement = tokens.tryParseStatement();
+        if (statement is null) {
+            break;
+        }
+        statements ~= statement;
+    }
+    return statements;
+}
+
+public Program parseProgram(Lexer tokens) {
+    // Starts with declarations
+    Declaration[] declarations;
+    while (tokens.head().kind == TokenKind.KEYWORD_VAR) {
+        declarations ~= tokens.parseDeclaration();
+    }
+    // Ends with statements
+    auto statements = tokens.parseStatements();
+    return new Program(declarations, statements);
 }

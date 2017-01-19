@@ -6,6 +6,7 @@ import std.uni : asLowerCase;
 
 import minilang.source;
 import minilang.token;
+import minilang.util;
 
 public interface Expression {
     @property public size_t start();
@@ -129,7 +130,7 @@ public class Declaration : Statement {
     mixin sourceIndexFields;
 
     public override string toString() {
-        return format("Declaration(%s %s)", _type.to!string().asLowerCase(), _name.toString());
+        return format("Declaration(%s %s)", _type.to!string().asLowerCase(), _name.getSource());
     }
 
     public static enum Type {
@@ -153,7 +154,7 @@ public class ReadStmt : Statement {
     mixin sourceIndexFields;
 
     public override string toString() {
-        return format("Read(%s)", _name.toString());
+        return format("Read(%s)", _name.getSource());
     }
 }
 
@@ -199,6 +200,119 @@ public class Assignment : Statement {
     mixin sourceIndexFields;
 
     public override string toString() {
-        return format("Assign(%s, %s)", _name.toString(), _value.toString());
+        return format("Assign(%s = %s)", _name.getSource(), _value.toString());
+    }
+}
+
+public class IfStmt : Statement {
+    private Expression _condition;
+    private Statement[] _statements;
+    private Else _elseBlock;
+
+    public this(Expression condition, Statement[] statements, Else elseBlock, size_t start, size_t end) {
+        _condition = condition;
+        _statements = statements;
+        _elseBlock = elseBlock;
+        _start = start;
+        _end = end;
+    }
+
+    @property public Expression condition() {
+        return _condition;
+    }
+
+    @property public Statement[] statements() {
+        return _statements;
+    }
+
+    @property public IfStmt.Else elseBlock() {
+        return _elseBlock;
+    }
+
+    mixin sourceIndexFields;
+
+    public override string toString() {
+        auto stmtString = _statements.join!"; "();
+        if (_elseBlock !is null) {
+            stmtString ~= "; " ~ _elseBlock.toString();
+        }
+        return format("If(%s: %s)", _condition.toString(), stmtString);
+    }
+
+    public static class Else {
+        private Statement[] _statements;
+
+        public this(Statement[] statements) {
+            _statements = statements;
+        }
+
+        public override string toString() {
+            return format("Else(%s)", _statements.join!"; "());
+        }
+    }
+}
+
+public class WhileStmt : Statement {
+    private Expression _condition;
+    private Statement[] _statements;
+
+    public this(Expression condition, Statement[] statements, size_t start, size_t end) {
+        _condition = condition;
+        _statements = statements;
+        _start = start;
+        _end = end;
+    }
+
+    @property public Expression condition() {
+        return _condition;
+    }
+
+    @property public Statement[] statements() {
+        return _statements;
+    }
+
+    mixin sourceIndexFields;
+
+    public override string toString() {
+        return format("While(%s: %s)", _condition.toString(), _statements.join!"; "());
+    }
+}
+
+public class Program {
+    private Declaration[] _declarations;
+    private Statement[] _statements;
+
+    public this(Declaration[] declarations, Statement[] statements) {
+        _declarations = declarations;
+        _statements = statements;
+
+        if (declarations.length > 0) {
+            _start = declarations[0].start;
+        } else if (statements.length > 0) {
+            _start = statements[0].start;
+        } else {
+            _start = 0;
+        }
+        if (statements.length > 0) {
+            _end = statements[$ - 1].end;
+        } else if (declarations.length > 0) {
+            _end = declarations[$ - 1].end;
+        } else {
+            _end = 0;
+        }
+    }
+
+    @property public Declaration[] declarations() {
+        return _declarations;
+    }
+
+    @property public Statement[] statements() {
+        return _statements;
+    }
+
+    mixin sourceIndexFields;
+
+    public override string toString() {
+        return format("Program(%s; %s)", _declarations.join!"; "(), _statements.join!"; "());
     }
 }
