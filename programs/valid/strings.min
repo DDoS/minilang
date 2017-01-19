@@ -1,5 +1,0 @@
-var prints: string;
-var escapes :string;
-
-prints = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 	!@#$%?&*-_=+^`~;:<>',.()[]{}";
-escapes = "\a\b\f\n\r\t\v\\\"";
