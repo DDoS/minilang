@@ -47,11 +47,11 @@ public interface Token {
     @property public void start(size_t start);
     @property public void end(size_t end);
     public string getSource();
-    public TokenKind getKind();
+    public TokenKind kind();
     public string toString();
 }
 
-private template FixedToken(TokenKind kind, string source) if (source.length > 0) {
+private template FixedToken(TokenKind _kind, string source) if (source.length > 0) {
     private class FixedToken : Token {
         public this(size_t start) {
             _start = start;
@@ -62,14 +62,14 @@ private template FixedToken(TokenKind kind, string source) if (source.length > 0
             return source;
         }
 
-        public override TokenKind getKind() {
-            return kind;
+        @property public override TokenKind kind() {
+            return _kind;
         }
 
         mixin sourceIndexFields;
 
         public override string toString() {
-            return kind.to!string();
+            return _kind.to!string();
         }
     }
 }
@@ -112,14 +112,14 @@ public class Identifier : Token {
         return source;
     }
 
-    public override TokenKind getKind() {
+    @property public override TokenKind kind() {
         return TokenKind.IDENTIFIER;
     }
 
     mixin sourceIndexFields;
 
     public override string toString() {
-        return format("%s(%s)", getKind(), source);
+        return format("%s(%s)", kind, source);
     }
 }
 
@@ -136,7 +136,7 @@ public class LiteralString : Token {
         return source;
     }
 
-    public override TokenKind getKind() {
+    @property public override TokenKind kind() {
         return TokenKind.LITERAL_STRING;
     }
 
@@ -158,7 +158,7 @@ public class LiteralString : Token {
     }
 
     public override string toString() {
-        return format("%s(%s)", getKind(), source);
+        return format("%s(%s)", kind, source);
     }
 
     unittest {
@@ -202,7 +202,7 @@ public class LiteralInt : Token {
         return source;
     }
 
-    public override TokenKind getKind() {
+    @property public override TokenKind kind() {
         return TokenKind.LITERAL_INT;
     }
 
@@ -219,7 +219,7 @@ public class LiteralInt : Token {
     }
 
     public override string toString() {
-        return format("%s(%s)", getKind(), source);
+        return format("%s(%s)", kind, source);
     }
 
     unittest {
@@ -246,7 +246,7 @@ public class LiteralFloat : Token {
         return source;
     }
 
-    public override TokenKind getKind() {
+    @property public override TokenKind kind() {
         return TokenKind.LITERAL_FLOAT;
     }
 
@@ -257,7 +257,7 @@ public class LiteralFloat : Token {
     }
 
     public override string toString() {
-        return format("%s(%s)", getKind(), source);
+        return format("%s(%s)", kind, source);
     }
 
     unittest {
@@ -280,7 +280,7 @@ public class Eof : Token {
         return "\u0004";
     }
 
-    public TokenKind getKind() {
+    @property public TokenKind kind() {
         return TokenKind.EOF;
     }
 

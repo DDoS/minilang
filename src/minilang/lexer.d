@@ -17,7 +17,7 @@ public class Lexer {
     }
 
     public bool has() {
-        return head().getKind() != TokenKind.EOF;
+        return head().kind != TokenKind.EOF;
     }
 
     public Token head() {
@@ -28,7 +28,7 @@ public class Lexer {
     }
 
     public void advance() {
-        if (head().getKind() != TokenKind.EOF) {
+        if (head().kind != TokenKind.EOF) {
             position++;
         }
     }

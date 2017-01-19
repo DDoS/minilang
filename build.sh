@@ -34,4 +34,6 @@ eval "$DMD_RUN \
     src/minilang/source.d \
     src/minilang/token.d \
     src/minilang/lexer.d \
+    src/minilang/ast.d \
+    src/minilang/parser.d \
 "
