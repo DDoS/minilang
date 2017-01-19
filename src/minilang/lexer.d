@@ -110,7 +110,7 @@ private string collectIdentifierBody(SourceReader reader) {
 }
 
 private void consumeLineCommentText(SourceReader reader) {
-    while (reader.has() && !reader.head().isNewLineChar()) {
+    while (reader.has() && !reader.head().isNewLine()) {
         reader.advance();
     }
     if (reader.has()) {
@@ -139,10 +139,16 @@ private string collectLiteralString(SourceReader reader) {
     }
     reader.collect();
     // String contents
-    auto ignoreNextQuote = false;
-    while (ignoreNextQuote || reader.has() && reader.head() != '"') {
-        ignoreNextQuote = reader.head() == '\\';
-        reader.collect();
+    while (true) {
+        if (reader.head().isPrintable() && reader.head() != '"' && reader.head() != '\\') {
+            // Collect a normal print character with no special meaning in a string
+            reader.collect();
+        } else if (reader.collectEscapeSequence()) {
+            // Nothing to do, it is already collected by the "if" call
+        } else {
+            // Not part of a string literal body, end here
+            break;
+        }
     }
     // Closing "
     if (reader.head() != '"') {
@@ -150,6 +156,18 @@ private string collectLiteralString(SourceReader reader) {
     }
     reader.collect();
     return reader.popCollected();
+}
+
+private bool collectEscapeSequence(SourceReader reader) {
+    if (reader.head() != '\\') {
+        return false;
+    }
+    reader.collect();
+    if (!reader.head().isEscapeChar()) {
+        throw new SourceException("Not a valid escape sequence", reader.head(), reader.count);
+    }
+    reader.collect();
+    return true;
 }
 
 private Token collectLiteralNumber(SourceReader reader) {

@@ -1,0 +1,5 @@
+var print: string;
+var escapes:string;
+
+print = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 	!@#$%?&*-_=+^`~;:<>',.()[]{}";
+escapes = "\a\b\f\n\r\t\v\\\"";

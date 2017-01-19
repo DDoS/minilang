@@ -43,6 +43,7 @@ private int parse(string[] args) {
         source = args[0].readText();
     } catch (Exception exception) {
         writeln("Could not read file: ", exception.msg);
+        return 1;
     }
     // Lex the file
     auto reader = new SourceReader(source);

@@ -27,4 +27,11 @@ fi
 DMD_RUN="$DMD -unittest -odbin -ofbin/minilang"
 
 # Invoke DMD to compile to the bin directory
-eval "$DMD_RUN src/app.d src/minilang/chars.d src/minilang/source.d src/minilang/token.d src/minilang/lexer.d"
+eval "$DMD_RUN \
+    src/app.d \
+    src/minilang/util.d \
+    src/minilang/chars.d \
+    src/minilang/source.d \
+    src/minilang/token.d \
+    src/minilang/lexer.d \
+"

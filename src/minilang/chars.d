@@ -1,14 +1,22 @@
 module minilang.chars;
 
 import std.format : format;
-import std.uni : isGraphical;
 import std.conv : to;
 
-private enum char[char] CHAR_ESCAPES = [
-    '\t': 't',
-    '\n': 'n',
-    '\r': 'r'
+import minilang.util;
+
+private enum char[char] CHAR_TO_ESCAPE = [
+    'a': '\a',
+    'b': '\b',
+    't': '\t',
+    'n': '\n',
+    'v': '\v',
+    'f': '\f',
+    'r': '\r',
+    '"': '"',
+    '\\': '\\'
 ];
+private enum char[char] ESCAPE_TO_CHAR = CHAR_TO_ESCAPE.inverse();
 
 public bool isIdentifierStart(char c) {
     return c == '_' || c.isLetter();
@@ -26,7 +34,7 @@ public bool isDecimalDigit(char c) {
     return c >= '0' && c <= '9';
 }
 
-public bool isNewLineChar(char c) {
+public bool isNewLine(char c) {
     return c == '\n' || c == '\r';
 }
 
@@ -35,16 +43,35 @@ public bool isLineWhiteSpace(char c) {
 }
 
 public bool isWhiteSpace(char c) {
-    return c.isNewLineChar() || c.isLineWhiteSpace();
+    return c.isNewLine() || c.isLineWhiteSpace();
+}
+
+public bool isPrintable(char c) {
+    return c >= ' ' && c <= '~' || c == '\t';
+}
+
+public bool isEscapeChar(char c) {
+    return (c in CHAR_TO_ESCAPE) !is null;
+}
+
+public char decodeCharEscape(char c) {
+    auto optChar = c in CHAR_TO_ESCAPE;
+    if (optChar is null) {
+        throw new Error(format("Not a valid escape character: %s", c.escapeChar()));
+    }
+    return *optChar;
 }
 
 public string escapeChar(char c) {
-    auto escape = c in CHAR_ESCAPES;
-    if (escape !is null) {
-        return "\\" ~ (*escape).to!string();
+    auto optEscape = c in ESCAPE_TO_CHAR;
+    if (optEscape !is null) {
+        return "\\" ~ (*optEscape).to!string();
     }
-    if (c.isGraphical()) {
+    if (c.isPrintable()) {
         return c.to!string();
     }
-    return format("\\u%02X", c).to!string();
+    if (c == '\u0004') {
+        return "EOF";
+    }
+    return format("0x%02X", c).to!string();
 }

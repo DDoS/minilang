@@ -164,20 +164,25 @@ public class LiteralString : Token {
     unittest {
         auto a = new LiteralString("\"hel\\\"lo\"", 0);
         assert(a.getValue() == "hel\"lo");
-        auto b = new LiteralString("\"hel\\lo\"", 0);
+        auto b = new LiteralString("\"hel\\\\lo\"", 0);
         assert(b.getValue() == "hel\\lo");
+        auto c = new LiteralString("\"hel\\nlo\"", 0);
+        assert(c.getValue() == "hel\nlo");
+        auto d = new LiteralString("\"hel\\r\\f\\vlo\"", 0);
+        assert(d.getValue() == "hel\r\f\vlo");
     }
 }
 
 private string decodeStringContent(string data) {
-    char[] buffer;
+    char[] buffer = [];
     buffer.reserve(64);
     for (size_t i = 0; i < data.length; ) {
         char c = data[i];
         i += 1;
-        if (c == '\\' && i + 1 < data.length && data[i] == '"') {
-            c = '"';
+        if (c == '\\') {
+            c = data[i];
             i += 1;
+            c = c.decodeCharEscape();
         }
         buffer ~= c;
     }

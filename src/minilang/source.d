@@ -165,10 +165,10 @@ public class SourceException : Exception {
         size_t lineNumber = findLine(source, min(_start, source.length - 1));
         // find start and end of the line containing the error
         size_t lineStart = _start, lineEnd = _start;
-        while (lineStart > 0 && !source[lineStart - 1].isNewLineChar()) {
+        while (lineStart > 0 && !source[lineStart - 1].isNewLine()) {
             lineStart--;
         }
-        while (lineEnd < source.length && !source[lineEnd].isNewLineChar()) {
+        while (lineEnd < source.length && !source[lineEnd].isNewLine()) {
             lineEnd++;
         }
         string line = source[lineStart .. lineEnd].stripRight();
@@ -178,7 +178,7 @@ public class SourceException : Exception {
     private static size_t findLine(string source, size_t index) {
         size_t line = 0;
         for (size_t i = 0; i < index; i++) {
-            if (source[i].isNewLineChar()) {
+            if (source[i].isNewLine()) {
                 consumeNewLine(source, i);
                 if (i < index) {
                     line++;
