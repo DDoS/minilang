@@ -1,0 +1,17 @@
+var x1: float; var y1: float;
+var x2: float; var y2: float;
+var xDiff: float; var yDiff: float;
+
+print "Enter the first coordinate x & y:";
+read x1;
+read y1;
+
+print "Enter the second coordinate x & y:";
+read x2;
+read 2;
+
+xDiff = x1 - x2;
+yDiff = y1 - y2;
+
+print "The square of the distance is:";
+print xDiff * xDiff + yDiff * yDiff;
