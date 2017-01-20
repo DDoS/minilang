@@ -303,6 +303,7 @@ private enum FixedTokenCtor[string] OPERATOR_CTOR_MAP = buildFixedTokenCtorMap!(
     OperatorOpenParenthesis, OperatorCloseParenthesis
 );
 
+// Template magic to convert the token type list to a map from the token character to the class constructor
 private FixedTokenCtor[string] buildFixedTokenCtorMap(Token, Tokens...)() {
     static if (is(Token == FixedToken!(kind, source), TokenKind kind, string source)) {
         static if (Tokens.length > 0) {

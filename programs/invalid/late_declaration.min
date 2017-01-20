@@ -1,6 +1,5 @@
 var x1: float; var y1: float;
 var x2: float; var y2: float;
-var xDiff: float; var yDiff: float;
 
 print "Enter the first coordinate x & y:";
 read x1;
@@ -8,8 +7,9 @@ read y1;
 
 print "Enter the second coordinate x & y:";
 read x2;
-read 2;
+read x2;
 
+var xDiff: float; var yDiff: float;
 xDiff = x1 - x2;
 yDiff = y1 - y2;
 

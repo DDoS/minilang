@@ -84,6 +84,7 @@ private alias parseMultiply = parseBinary!(parseUnary,
     MultiplyExpr, TokenKind.OPERATOR_TIMES,
     DivideExpr, TokenKind.OPERATOR_DIVIDE
 );
+
 private alias parseAdd = parseBinary!(parseMultiply,
     AddExpr, TokenKind.OPERATOR_PLUS,
     SubtractExpr, TokenKind.OPERATOR_MINUS
@@ -295,5 +296,9 @@ public Program parseProgram(Lexer tokens) {
     }
     // Ends with statements
     auto statements = tokens.parseStatements();
+    // Make sure there aren't any tokens left
+    if (tokens.has()) {
+        throw new SourceException("Expected end of program", tokens.head());
+    }
     return new Program(declarations, statements);
 }
