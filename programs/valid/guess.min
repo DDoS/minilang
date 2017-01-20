@@ -16,7 +16,7 @@ while wrong do
     if guess - actual then
         print "You're right!";
         wrong = 0;
-        if guessCount - 1 then
+        if guessCount + ---1 then
             print "But it took you more than one attempt :\\";
         endif
     else
