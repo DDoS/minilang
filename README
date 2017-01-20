@@ -3,3 +3,33 @@ McGill COMP 520 - Compiler Design, Fall 2017.
 Assignment code
 
 Aleksi Sapon - 260581670
+
+The compiler lexer and parser were implemented by hand using work from a previous project.
+It's implemented in D, which isn't available on the McGill Linux machines. Therefore I have
+bundled the DMD compiler, which can be found in the "dmd2" directory. The build script uses it
+to compile into a "bin" directory that will be created at the root of the project.
+
+The source code is composed of the following modules:
+
+"source.d" contains a "SourceReader" class for incrementally reading a string and splitting it into substrings.
+It also contains a template for adding source index information to other classes, and an exception class with pretty
+printing of errors for data containing these source indices.
+
+"chars.d" contains functions to discriminate between the different usages of characters, as defined in the specification.
+For example: whitespace, letter, symbol, digit, etc. It also has some code to convert escape sequences to characters,
+and the opposite (for error messages).
+
+"token.d" contains all the token definitions, mostly using templates. It also has a function to check if a string is
+a keyword, or a character is a symbol, and return the appropriate token instance. Tokens are split into two kinds:
+fixed and regular. A fixed token only has a single string associated to it. For example the "KEYWORD_VAR" token is always
+"var". Regular tokens can have many strings, such as an int literal. They both implement the "Token" interface.
+
+"lexer.d" contains the lexer, which is done as a lazy iterator returning one token at a time. It also supports saving
+and restoring the position in a stack, which was copied from the original project and is unused in this compiler.
+
+"ast.d" contains the AST definitions. Again this make use of templates to cut on redundancy. There are two kinds of
+classes: expression and statements. The "Program" class is the root of the AST.
+
+"parser.d" contains the parser, written using recursive descent. It builds the AST as it parses using the lexer iterator.
+
+"util.d" contains a few functions used throughout.
