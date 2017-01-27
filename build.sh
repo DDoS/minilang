@@ -36,4 +36,5 @@ eval "$DMD_RUN \
     src/minilang/lexer.d \
     src/minilang/ast.d \
     src/minilang/parser.d \
+    src/minilang/transform.d \
 "

@@ -2,41 +2,30 @@ module minilang.ast;
 
 import std.conv : to;
 import std.format : format;
-import std.uni : asLowerCase;
 
 import minilang.source;
 import minilang.token;
 import minilang.util;
 
-public interface Expression {
-    @property public size_t start();
-    @property public size_t end();
-    @property public void start(size_t start);
-    @property public void end(size_t end);
-    public string toString();
+public abstract class Expression {
+    protected this(size_t start, size_t end) {
+        _start = start;
+        _end = end;
+    }
+
+    mixin sourceIndexFields;
 }
 
-private class TokenExpression(T : Token) : Expression {
-    private T token;
+private class TokenExpr(T : Token) : Expression {
+    private T _token;
 
     public this(T token) {
-        this.token = token;
+        super(token.start, token.end);
+        _token = token;
     }
 
-    @property public override size_t start() {
-        return token.start;
-    }
-
-    @property public override size_t end() {
-        return token.end;
-    }
-
-    @property public override void start(size_t start) {
-        token.start = start;
-    }
-
-    @property public override void end(size_t end) {
-        token.end = end;
+    @property public Token token() {
+        return _token;
     }
 
     public override string toString() {
@@ -44,25 +33,22 @@ private class TokenExpression(T : Token) : Expression {
     }
 }
 
-public alias IdentifierExpr = TokenExpression!Identifier;
-public alias StringExpr = TokenExpression!LiteralString;
-public alias IntExpr = TokenExpression!LiteralInt;
-public alias FloatExpr = TokenExpression!LiteralFloat;
+public alias IdentifierExpr = TokenExpr!Identifier;
+public alias StringExpr = TokenExpr!LiteralString;
+public alias IntExpr = TokenExpr!LiteralInt;
+public alias FloatExpr = TokenExpr!LiteralFloat;
 
 public class NegateExpr : Expression {
     private Expression _inner;
 
     public this(Expression inner) {
+        super(inner.start, inner.end);
         _inner = inner;
-        _start = inner.start;
-        _end = inner.end;
     }
 
     @property public Expression inner() {
         return _inner;
     }
-
-    mixin sourceIndexFields;
 
     public override string toString() {
         return format("Negate(%s)", _inner.toString());
@@ -74,10 +60,9 @@ private class Binary(string name) : Expression {
     private Expression _right;
 
     public this(Expression left, Expression right) {
+        super(left.start, right.end);
         _left = left;
         _right = right;
-        _start = left.start;
-        _end = right.end;
     }
 
     @property public Expression left() {
@@ -87,8 +72,6 @@ private class Binary(string name) : Expression {
     @property public Expression right() {
         return _right;
     }
-
-    mixin sourceIndexFields;
 
     public override string toString() {
         return format(name ~ "(%s, %s)", _left.toString(), _right.toString());
@@ -100,15 +83,7 @@ public alias SubtractExpr = Binary!"Subtract";
 public alias MultiplyExpr = Binary!"Multiply";
 public alias DivideExpr = Binary!"Divide";
 
-public interface Statement {
-    @property public size_t start();
-    @property public size_t end();
-    @property public void start(size_t start);
-    @property public void end(size_t end);
-    public string toString();
-}
-
-public class Declaration : Statement {
+public class Declaration {
     private Type _type;
     private Identifier _name;
 
@@ -138,20 +113,26 @@ public class Declaration : Statement {
     }
 }
 
+public abstract class Statement {
+    protected this(size_t start, size_t end) {
+        _start = start;
+        _end = end;
+    }
+
+    mixin sourceIndexFields;
+}
+
 public class ReadStmt : Statement {
     private Identifier _name;
 
     public this(Identifier name, size_t start, size_t end) {
+        super(start, end);
         _name = name;
-        _start = start;
-        _end = end;
     }
 
     @property public Identifier name() {
         return _name;
     }
-
-    mixin sourceIndexFields;
 
     public override string toString() {
         return format("Read(%s)", _name.getSource());
@@ -162,16 +143,13 @@ public class PrintStmt : Statement {
     private Expression _value;
 
     public this(Expression value, size_t start, size_t end) {
+        super(start, end);
         _value = value;
-        _start = start;
-        _end = end;
     }
 
     @property public Expression value() {
         return _value;
     }
-
-    mixin sourceIndexFields;
 
     public override string toString() {
         return format("Print(%s)", _value.toString());
@@ -183,10 +161,9 @@ public class Assignment : Statement {
     private Expression _value;
 
     public this(Identifier name, Expression value, size_t end) {
+        super(name.start, end);
         _name = name;
         _value = value;
-        _start = name.start;
-        _end = end;
     }
 
     @property public Identifier name() {
@@ -196,8 +173,6 @@ public class Assignment : Statement {
     @property public Expression value() {
         return _value;
     }
-
-    mixin sourceIndexFields;
 
     public override string toString() {
         return format("Assign(%s = %s)", _name.getSource(), _value.toString());
@@ -210,11 +185,10 @@ public class IfStmt : Statement {
     private Else _elseBlock;
 
     public this(Expression condition, Statement[] statements, Else elseBlock, size_t start, size_t end) {
+        super(start, end);
         _condition = condition;
         _statements = statements;
         _elseBlock = elseBlock;
-        _start = start;
-        _end = end;
     }
 
     @property public Expression condition() {
@@ -228,8 +202,6 @@ public class IfStmt : Statement {
     @property public IfStmt.Else elseBlock() {
         return _elseBlock;
     }
-
-    mixin sourceIndexFields;
 
     public override string toString() {
         auto stmtString = _statements.join!"; "();
@@ -246,6 +218,10 @@ public class IfStmt : Statement {
             _statements = statements;
         }
 
+        @property public Statement[] statements() {
+            return _statements;
+        }
+
         public override string toString() {
             return format("Else(%s)", _statements.join!"; "());
         }
@@ -257,10 +233,9 @@ public class WhileStmt : Statement {
     private Statement[] _statements;
 
     public this(Expression condition, Statement[] statements, size_t start, size_t end) {
+        super(start, end);
         _condition = condition;
         _statements = statements;
-        _start = start;
-        _end = end;
     }
 
     @property public Expression condition() {
@@ -270,8 +245,6 @@ public class WhileStmt : Statement {
     @property public Statement[] statements() {
         return _statements;
     }
-
-    mixin sourceIndexFields;
 
     public override string toString() {
         return format("While(%s: %s)", _condition.toString(), _statements.join!"; "());
