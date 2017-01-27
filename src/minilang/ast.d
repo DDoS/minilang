@@ -105,7 +105,7 @@ public class Declaration {
     mixin sourceIndexFields;
 
     public override string toString() {
-        return format("Declaration(%s %s)", _type.to!string().asLowerCase(), _name.getSource());
+        return format("Declaration(%s %s)", _type.to!string().toLowerCase(), _name.getSource());
     }
 
     public static enum Type {

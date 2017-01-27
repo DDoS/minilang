@@ -1,7 +1,9 @@
 module minilang.util;
 
+import std.conv : to;
 import std.range.primitives : isInputRange;
 import std.algorithm.iteration : map, reduce;
+import std.uni : asLowerCase;
 
 public T castOrFail(T, S)(S s) {
     T t = cast(T) s;
@@ -24,4 +26,8 @@ public string join(string joiner, string stringer = "a.to!string()", Range)(Rang
         return "";
     }
     return things.map!stringer().reduce!("a ~ \"" ~ joiner ~ "\" ~ b")();
+}
+
+public string toLowerCase(string s) {
+    return s.asLowerCase().to!string();
 }
