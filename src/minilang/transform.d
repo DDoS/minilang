@@ -1,7 +1,7 @@
 module minilang.transform;
 
 import std.meta : AliasSeq, DerivedToFront, NoDuplicates;
-import std.traits : BaseClassesTuple;
+import std.traits : BaseClassesTuple, ReturnType;
 import std.format : format;
 
 import minilang.ast;
@@ -19,9 +19,10 @@ public alias transform = AutoDispatch!(
     Program
 );
 
-// This code is copied from: https://wiki.dlang.org/Dispatching_an_object_based_on_its_dynamic_type
+// This code is modified from: https://wiki.dlang.org/Dispatching_an_object_based_on_its_dynamic_type
 private template AutoDispatch(Leaves...) {
-    public auto AutoDispatch(alias func, Args...)(Args args) if (Args.length >= 1 && is(Args[0] == class)) {
+    public R AutoDispatch(alias func, R = ReturnType!func, Args...)(Args args)
+            if (Args.length >= 1 && is(Args[0] == class)) {
         auto objInfo = typeid(args[0]);
         foreach (Base; ClassTree!Leaves) {
             if (objInfo == Base.classinfo) {

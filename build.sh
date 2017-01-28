@@ -38,4 +38,5 @@ eval "$DMD_RUN \
     src/minilang/parser.d \
     src/minilang/transform.d \
     src/minilang/print.d \
+    src/minilang/symbol.d \
 "
