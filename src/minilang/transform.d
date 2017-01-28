@@ -8,7 +8,8 @@ import minilang.ast;
 import minilang.util;
 
 public alias transform = AutoDispatch!(
-    IdentifierExpr, StringExpr, IntExpr, FloatExpr,
+    NameExpr,
+    StringExpr, IntExpr, FloatExpr,
     NegateExpr,
     AddExpr, SubtractExpr, MultiplyExpr, DivideExpr,
     Declaration,

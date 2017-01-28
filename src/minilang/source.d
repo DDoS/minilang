@@ -3,8 +3,18 @@ module minilang.source;
 import std.conv : to;
 import std.string : stripRight;
 import std.algorithm.comparison : min;
+import std.exception : assumeUnique;
 
 import minilang.chars;
+
+public string escapeString(string source) {
+    char[] buffer;
+    buffer.reserve(source.length);
+    foreach (c; source) {
+        buffer ~= c.escapeChar();
+    }
+    return buffer.assumeUnique();
+}
 
 public class SourceReader {
     private enum size_t DEFAULT_COLLECT_SIZE = 16;

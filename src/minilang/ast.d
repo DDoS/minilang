@@ -16,27 +16,46 @@ public abstract class Expression {
     mixin sourceIndexFields;
 }
 
-private class TokenExpr(T : Token) : Expression {
-    private T _token;
+public class NameExpr : Expression {
+    private string _name;
 
-    public this(T token) {
-        super(token.start, token.end);
-        _token = token;
+    public this(Identifier name) {
+        super(name.start, name.end);
+        _name = name.getSource();
     }
 
-    @property public Token token() {
-        return _token;
+    @property public string name() {
+        return _name;
     }
 
     public override string toString() {
-        return token.getSource();
+        return _name;
     }
 }
 
-public alias IdentifierExpr = TokenExpr!Identifier;
-public alias StringExpr = TokenExpr!LiteralString;
-public alias IntExpr = TokenExpr!LiteralInt;
-public alias FloatExpr = TokenExpr!LiteralFloat;
+private class LiteralExpr(V) : Expression {
+    private V _value;
+
+    public this(V value, size_t start, size_t end) {
+        super(start, end);
+        _value = value;
+    }
+
+    @property public V value() {
+        return _value;
+    }
+
+    public override string toString() {
+        static if (is(V == string)) {
+            return format("\"%s\"", _value.escapeString());
+        }
+        return _value.to!string();
+    }
+}
+
+public alias StringExpr = LiteralExpr!string;
+public alias IntExpr = LiteralExpr!long;
+public alias FloatExpr = LiteralExpr!double;
 
 public class NegateExpr : Expression {
     private Expression _inner;

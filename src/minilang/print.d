@@ -72,14 +72,14 @@ private void prettyPrint(Statement[] statements, Printer printer = new Printer()
     }
 }
 
-public void prettyPrintToken(TokenExpr)(TokenExpr tokenExpr, Printer printer = new Printer()) {
-    printer.print(tokenExpr.token.getSource());
+public void prettyPrintSimpleExpr(SimpleExpr)(SimpleExpr simpleExpr, Printer printer = new Printer()) {
+    printer.print(simpleExpr.toString());
 }
 
-public alias prettyPrint = prettyPrintToken!IdentifierExpr;
-public alias prettyPrint = prettyPrintToken!StringExpr;
-public alias prettyPrint = prettyPrintToken!IntExpr;
-public alias prettyPrint = prettyPrintToken!FloatExpr;
+public alias prettyPrint = prettyPrintSimpleExpr!NameExpr;
+public alias prettyPrint = prettyPrintSimpleExpr!StringExpr;
+public alias prettyPrint = prettyPrintSimpleExpr!IntExpr;
+public alias prettyPrint = prettyPrintSimpleExpr!FloatExpr;
 
 public void prettyPrint(NegateExpr negateExpr, Printer printer = new Printer()) {
     printer.print("(");

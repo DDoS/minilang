@@ -11,22 +11,30 @@ private Expression parseAtom(Lexer tokens) {
         case IDENTIFIER: {
             auto token = tokens.head();
             tokens.advance();
-            return new IdentifierExpr(token.castOrFail!Identifier());
+            return new NameExpr(token.castOrFail!Identifier());
         }
         case LITERAL_STRING: {
             auto token = tokens.head();
             tokens.advance();
-            return new StringExpr(token.castOrFail!LiteralString());
+            auto literalString = token.castOrFail!LiteralString();
+            return new StringExpr(literalString.getValue(), literalString.start, literalString.end);
         }
         case LITERAL_INT: {
             auto token = tokens.head();
             tokens.advance();
-            return new IntExpr(token.castOrFail!LiteralInt());
+            auto literalInt = token.castOrFail!LiteralInt();
+            bool overflow = void;
+            auto value = literalInt.getValue(overflow);
+            if (overflow) {
+                throw new SourceException("Integer literal value is out of range", literalInt);
+            }
+            return new IntExpr(value, literalInt.start, literalInt.end);
         }
         case LITERAL_FLOAT: {
             auto token = tokens.head();
             tokens.advance();
-            return new FloatExpr(token.castOrFail!LiteralFloat());
+            auto literalFloat = token.castOrFail!LiteralFloat();
+            return new FloatExpr(literalFloat.getValue(), literalFloat.start, literalFloat.end);
         }
         case OPERATOR_OPEN_PARENTHESIS: {
             tokens.advance();

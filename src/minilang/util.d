@@ -25,7 +25,7 @@ public string join(string joiner, string stringer = "a.to!string()", Range)(Rang
     if (things.length <= 0) {
         return "";
     }
-    return things.map!stringer().reduce!("a ~ \"" ~ joiner ~ "\" ~ b")();
+    return things.map!stringer().reduce!("a ~ \"" ~ joiner ~ "\" ~ b");
 }
 
 public string toLowerCase(string s) {
