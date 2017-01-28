@@ -1,9 +1,11 @@
 import std.getopt : getopt, config;
 import std.stdio : writeln;
-import std.file : readText;
+import std.file : readText, write;
+import std.path : setExtension;
 
 import minilang.source : SourceReader, SourceException;
 import minilang.lexer : Lexer;
+import minilang.ast : Program;
 import minilang.parser : parseProgram;
 import minilang.print : Printer, prettyPrint;
 
@@ -15,6 +17,7 @@ int main(string[] args) {
         writeln("Expected a command");
         return 1;
     }
+    // Execute the command
     switch (args[0]) {
         case "parse":
             return parseCommand(args);
@@ -26,7 +29,13 @@ int main(string[] args) {
     }
 }
 
-private int parseCommand(string[] args) {
+private int parseCommand(ref string[] args) {
+    Program program = void;
+    return parseCommand(args, program);
+}
+
+private int parseCommand(ref string[] args, out Program program) {
+    program = null;
     // Get the flags for extra debug output
     bool printTokens = false, printSyntax = false;
     args.getopt(
@@ -61,7 +70,7 @@ private int parseCommand(string[] args) {
             }
             lexer.restorePosition();
         }
-        auto program = lexer.parseProgram();
+        program = lexer.parseProgram();
         if (printSyntax) {
             writeln(program.toString());
         }
@@ -75,28 +84,17 @@ private int parseCommand(string[] args) {
 }
 
 private int printCommand(string[] args) {
-    // Remove the "print" command from the arguments
-    args = args[1 .. $];
-    // Get the file text
-    string source;
-    try {
-        source = args[0].readText();
-    } catch (Exception exception) {
-        writeln("Could not read file: ", exception.msg);
+    // First call the parse command
+    Program program = void;
+    if (parseCommand(args, program)) {
         return 1;
     }
-    // Lex and parse the file
-    try {
-        auto reader = new SourceReader(source);
-        auto lexer = new Lexer(reader);
-        auto program = lexer.parseProgram();
-        // Print the program
-        auto printer = new Printer;
-        program.prettyPrint(printer);
-        writeln(printer.toString());
-        return 0;
-    } catch (SourceException exception) {
-        writeln(exception.getErrorInformation(source).toString());
-        return 1;
-    }
+    // Next get the path of the output file
+    auto prettyOutput = args[0].setExtension(".pretty.min");
+    // Then do the pretty printing
+    auto printer = new Printer();
+    program.prettyPrint(printer);
+    // Write the printed output to the file
+    prettyOutput.write(printer.toString());
+    return 0;
 }

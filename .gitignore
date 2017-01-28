@@ -1,2 +1,5 @@
 /bin/
 *.log
+*.pretty.min
+*.symbol.min
+*.c
