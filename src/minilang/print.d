@@ -21,7 +21,7 @@ public void prettyPrint(Declaration declaration, Printer printer = new Printer()
     printer.print("var ")
             .print(declaration.name.getSource())
             .print(": ")
-            .print(declaration.type.to!string().toLowerCase())
+            .print(declaration.typeName.toString())
             .print(";");
 }
 

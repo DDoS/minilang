@@ -103,18 +103,18 @@ public alias MultiplyExpr = Binary!"Multiply";
 public alias DivideExpr = Binary!"Divide";
 
 public class Declaration {
-    private Type _type;
+    private TypeName _typeName;
     private Identifier _name;
 
-    public this(Type type, Identifier name, size_t start, size_t end) {
-        _type = type;
+    public this(TypeName typeName, Identifier name, size_t start, size_t end) {
+        _typeName = typeName;
         _name = name;
         _start = start;
         _end = end;
     }
 
-    @property public Type type() {
-        return _type;
+    @property public TypeName typeName() {
+        return _typeName;
     }
 
     @property public Identifier name() {
@@ -124,11 +124,39 @@ public class Declaration {
     mixin sourceIndexFields;
 
     public override string toString() {
-        return format("Declaration(%s %s)", _type.to!string().toLowerCase(), _name.getSource());
+        return format("Declaration(%s %s)", _typeName.toString(), _name.getSource());
     }
 
-    public static enum Type {
-        INT, FLOAT, STRING
+    public static class TypeName {
+        private Type _type;
+
+        public this(KeywordType)(KeywordType keyword) {
+            static if (is(KeywordType == KeywordString)) {
+                _type = Type.STRING;
+            } else static if (is(KeywordType == KeywordInt)) {
+                _type = Type.INT;
+            } else static if (is(KeywordType == KeywordFloat)) {
+                _type = Type.FLOAT;
+            } else {
+                static assert (0);
+            }
+            _start = keyword.start;
+            _end = keyword.end;
+        }
+
+        @property public Type type() {
+            return _type;
+        }
+
+        mixin sourceIndexFields;
+
+        public override string toString() {
+            return type.to!string().toLowerCase();
+        }
+
+        public static enum Type {
+            INT, FLOAT, STRING
+        }
     }
 }
 

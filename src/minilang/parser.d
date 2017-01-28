@@ -128,28 +128,29 @@ private Declaration parseDeclaration(Lexer tokens) {
     }
     tokens.advance();
     // Followed by a type keyword
-    Declaration.Type type = void;
-    switch (tokens.head().kind) with (TokenKind) {
+    auto typeKeyword = tokens.head();
+    tokens.advance();
+    Declaration.TypeName typeName = void;
+    switch (typeKeyword.kind) with (TokenKind) {
         case KEYWORD_STRING: {
-            type = Declaration.Type.STRING;
+            typeName = new Declaration.TypeName(typeKeyword.castOrFail!KeywordString());
             break;
         }
         case KEYWORD_INT: {
-            type = Declaration.Type.INT;
+            typeName = new Declaration.TypeName(typeKeyword.castOrFail!KeywordInt());
             break;
         }
         case KEYWORD_FLOAT: {
-            type = Declaration.Type.FLOAT;
+            typeName = new Declaration.TypeName(typeKeyword.castOrFail!KeywordFloat());
             break;
         }
         default: {
-            throw new SourceException("Expected \"string\", \"int\" or \"float\"", tokens.head());
+            throw new SourceException("Expected \"string\", \"int\" or \"float\"", typeKeyword);
         }
     }
-    tokens.advance();
     // Ends with ';'
     auto end = tokens.parseSemicolon();
-    return new Declaration(type, name, start, end);
+    return new Declaration(typeName, name, start, end);
 }
 
 private ReadStmt parseReadStatement(Lexer tokens) {
