@@ -8,6 +8,7 @@ import minilang.lexer : Lexer;
 import minilang.ast : Program;
 import minilang.parser : parseProgram;
 import minilang.print : Printer, prettyPrint;
+import minilang.symbol : SymbolTable, checkType;
 
 int main(string[] args) {
     // Remove the executable name from the arguments
@@ -23,6 +24,8 @@ int main(string[] args) {
             return parseCommand(args);
         case "print":
             return printCommand(args);
+        case "symbols":
+            return symbolsCommand(args);
         default:
             writeln("Unknown command: ", args[0]);
             return 1;
@@ -30,11 +33,13 @@ int main(string[] args) {
 }
 
 private int parseCommand(ref string[] args) {
+    string source = void;
     Program program = void;
-    return parseCommand(args, program);
+    return parseCommand(args, source, program);
 }
 
-private int parseCommand(ref string[] args, out Program program) {
+private int parseCommand(ref string[] args, out string source, out Program program) {
+    source = null;
     program = null;
     // Get the flags for extra debug output
     bool printTokens = false, printSyntax = false;
@@ -51,7 +56,6 @@ private int parseCommand(ref string[] args, out Program program) {
         return 1;
     }
     // Get the file text
-    string source;
     try {
         source = args[0].readText();
     } catch (Exception exception) {
@@ -74,10 +78,8 @@ private int parseCommand(ref string[] args, out Program program) {
         if (printSyntax) {
             writeln(program.toString());
         }
-        writeln("VALID");
         return 0;
     } catch (SourceException exception) {
-        writeln("INVALID");
         writeln(exception.getErrorInformation(source).toString());
         return 1;
     }
@@ -85,8 +87,9 @@ private int parseCommand(ref string[] args, out Program program) {
 
 private int printCommand(string[] args) {
     // First call the parse command
+    string source = void;
     Program program = void;
-    if (parseCommand(args, program)) {
+    if (parseCommand(args, source, program)) {
         return 1;
     }
     // Next get the path of the output file
@@ -97,4 +100,28 @@ private int printCommand(string[] args) {
     // Write the printed output to the file
     prettyOutput.write(printer.toString());
     return 0;
+}
+
+private int symbolsCommand(string[] args) {
+    // First call the parse command
+    string source = void;
+    Program program = void;
+    if (parseCommand(args, source, program)) {
+        return 1;
+    }
+    // Next get the path of the output file
+    auto symbolOutput = args[0].setExtension(".symbol.min");
+    // Then do the type checking
+    auto symbols = new SymbolTable();
+    int succcess = void;
+    try {
+        program.checkType(symbols);
+        succcess = 0;
+    } catch (SourceException exception) {
+        writeln(exception.getErrorInformation(source).toString());
+        succcess = 1;
+    }
+    // Write the symbol output to the file
+    symbolOutput.write(symbols.toString());
+    return succcess;
 }
