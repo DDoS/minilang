@@ -208,10 +208,10 @@ public class LiteralInt : Token {
 
     mixin sourceIndexFields;
 
-    public long getValue(out bool overflow) {
+    public int getValue(out bool overflow) {
         try {
             overflow = false;
-            return source.to!long(10);
+            return source.to!int(10);
         } catch (ConvOverflowException) {
             overflow = true;
             return -1;
@@ -252,8 +252,8 @@ public class LiteralFloat : Token {
 
     mixin sourceIndexFields;
 
-    public double getValue() {
-        return source.to!double();
+    public float getValue() {
+        return source.to!float();
     }
 
     public override string toString() {
@@ -262,11 +262,11 @@ public class LiteralFloat : Token {
 
     unittest {
         auto a = new LiteralFloat("62.33352", 0);
-        assert(a.getValue() == 62.33352);
+        assert(a.getValue() == 62.33352f);
         auto b = new LiteralFloat("1.1", 0);
-        assert(b.getValue() == 1.1);
+        assert(b.getValue() == 1.1f);
         auto c = new LiteralFloat("0.1", 0);
-        assert(c.getValue() == 0.1);
+        assert(c.getValue() == 0.1f);
     }
 }
 

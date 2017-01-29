@@ -54,8 +54,8 @@ private class LiteralExpr(V) : Expression {
 }
 
 public alias StringExpr = LiteralExpr!string;
-public alias IntExpr = LiteralExpr!long;
-public alias FloatExpr = LiteralExpr!double;
+public alias IntExpr = LiteralExpr!int;
+public alias FloatExpr = LiteralExpr!float;
 
 public class NegateExpr : Expression {
     private Expression _inner;
