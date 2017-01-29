@@ -82,18 +82,37 @@ public alias prettyPrint = prettyPrintSimpleExpr!IntExpr;
 public alias prettyPrint = prettyPrintSimpleExpr!FloatExpr;
 
 public void prettyPrint(NegateExpr negateExpr, Printer printer = new Printer()) {
-    printer.print("(");
     printer.print("-");
     negateExpr.inner.transform!prettyPrint(printer);
-    printer.print(")");
 }
 
-public void prettyPrintBinary(BinaryExpr, string symbol)(BinaryExpr binaryExpr, Printer printer = new Printer()) {
-    printer.print("(");
+public void prettyPrintBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, Printer printer = new Printer()) {
+    // Check if the left or right children have lower precenence (if so we must use parentheses)
+    static if (is(BinaryExpr == MultiplyExpr) || is(BinaryExpr == DivideExpr)) {
+        auto parenthesisLeft = cast(AddExpr) binaryExpr.left || cast(SubtractExpr) binaryExpr.left;
+        auto parenthesisRight = cast(AddExpr) binaryExpr.right || cast(SubtractExpr) binaryExpr.right;
+    } else {
+        auto parenthesisLeft = false;
+        auto parenthesisRight = false;
+    }
+    // Print the left child
+    if (parenthesisLeft) {
+        printer.print("(");
+    }
     binaryExpr.left.transform!prettyPrint(printer);
-    printer.print(" " ~ symbol ~ " ");
+    if (parenthesisLeft) {
+        printer.print(")");
+    }
+    // Print the operator
+    printer.print(" " ~ operator ~ " ");
+    // Print the right child
+    if (parenthesisRight) {
+        printer.print("(");
+    }
     binaryExpr.right.transform!prettyPrint(printer);
-    printer.print(")");
+    if (parenthesisRight) {
+        printer.print(")");
+    }
 }
 
 public alias prettyPrint = prettyPrintBinary!(AddExpr, "+");
