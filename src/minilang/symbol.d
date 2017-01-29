@@ -7,8 +7,6 @@ import minilang.ast;
 import minilang.transform;
 import minilang.util;
 
-private alias Type = Declaration.TypeName.Type;
-
 public class SymbolTable {
     private Type[string] variableToType;
 
@@ -58,7 +56,7 @@ public void checkType(ReadStmt readStmt, SymbolTable symbols) {
 
 public void checkType(PrintStmt printStmt, SymbolTable symbols) {
     // We can print any type, so just check the expression type
-    printStmt.value.transform!getType(symbols);
+    printStmt.value.transform!checkType(symbols);
 }
 
 public void checkType(Assignment assignment, SymbolTable symbols) {
@@ -67,7 +65,9 @@ public void checkType(Assignment assignment, SymbolTable symbols) {
         throw new SourceException(format("Undeclared variable \"%s\"", variable), assignment.name);
     }
     auto variableType = symbols.getType(variable);
-    auto valueType = assignment.value.transform!getType(symbols);
+    // Check the assignment value type
+    assignment.value.transform!checkType(symbols);
+    auto valueType = assignment.value.type;
     // Only allow widening of INT to FLOAT, else it must be the same type
     if (variableType != valueType && !(variableType == Type.FLOAT && valueType == Type.INT)) {
         throw new SourceException(format("Cannot convert type %s to %s", valueType, variableType), assignment);
@@ -76,7 +76,8 @@ public void checkType(Assignment assignment, SymbolTable symbols) {
 
 public void checkType(IfStmt ifStmt, SymbolTable symbols) {
     // Only allow INT for the condition type
-    auto conditionType = ifStmt.condition.transform!getType(symbols);
+    ifStmt.condition.transform!checkType(symbols);
+    auto conditionType = ifStmt.condition.type;
     if (conditionType != Type.INT) {
         throw new SourceException(format("Cannot use type %s for a condition", conditionType), ifStmt.condition);
     }
@@ -89,7 +90,8 @@ public void checkType(IfStmt ifStmt, SymbolTable symbols) {
 
 public void checkType(WhileStmt whileStmt, SymbolTable symbols) {
     // Only allow INT for the condition type
-    auto conditionType = whileStmt.condition.transform!getType(symbols);
+    whileStmt.condition.transform!checkType(symbols);
+    auto conditionType = whileStmt.condition.type;
     if (conditionType != Type.INT) {
         throw new SourceException(format("Cannot use type %s for a condition", conditionType), whileStmt.condition);
     }
@@ -103,33 +105,37 @@ public void checkType(Statement[] statements, SymbolTable symbols) {
     }
 }
 
-public Type getType(NameExpr nameExpr, SymbolTable symbols) {
+public void checkType(NameExpr nameExpr, SymbolTable symbols) {
     auto variable = nameExpr.name;
     if (!symbols.exists(variable)) {
         throw new SourceException(format("Undeclared variable \"%s\"", variable), nameExpr);
     }
-    return symbols.getType(variable);
+    nameExpr.type = symbols.getType(variable);
 }
 
-public Type getTypeLitralExpr(LiteralExpr, Type type)(LiteralExpr literalExpr, SymbolTable symbols) {
-    return type;
+public void checkTypeLitralExpr(LiteralExpr, Type type)(LiteralExpr literalExpr, SymbolTable symbols) {
+    literalExpr.type = type;
 }
 
-public alias getType = getTypeLitralExpr!(StringExpr, Type.STRING);
-public alias getType = getTypeLitralExpr!(IntExpr, Type.INT);
-public alias getType = getTypeLitralExpr!(FloatExpr, Type.FLOAT);
+public alias checkType = checkTypeLitralExpr!(StringExpr, Type.STRING);
+public alias checkType = checkTypeLitralExpr!(IntExpr, Type.INT);
+public alias checkType = checkTypeLitralExpr!(FloatExpr, Type.FLOAT);
 
-public Type getType(NegateExpr negateExpr, SymbolTable symbols) {
-    auto innerType = negateExpr.inner.transform!getType(symbols);
-    if (innerType == Type.INT || innerType == Type.FLOAT) {
-        return innerType;
+public void checkType(NegateExpr negateExpr, SymbolTable symbols) {
+    negateExpr.inner.transform!checkType(symbols);
+    auto innerType = negateExpr.inner.type;
+    if (innerType != Type.INT && innerType != Type.FLOAT) {
+        throw new SourceException(format("Cannot negate type %s", innerType), negateExpr.inner);
     }
-    throw new SourceException(format("Cannot negate type %s", innerType), negateExpr.inner);
+    negateExpr.type = innerType;
 }
 
-public Type getTypeBinary(BinaryExpr)(BinaryExpr binaryExpr, SymbolTable symbols) {
-    auto leftType = binaryExpr.left.transform!getType(symbols);
-    auto rightType = binaryExpr.right.transform!getType(symbols);
+public void checkTypeBinary(BinaryExpr)(BinaryExpr binaryExpr, SymbolTable symbols) {
+    // Check the types of the left and right children
+    binaryExpr.left.transform!checkType(symbols);
+    binaryExpr.right.transform!checkType(symbols);
+    auto leftType = binaryExpr.left.type;
+    auto rightType = binaryExpr.right.type;
     // If both types are the same, use that type
     if (leftType == rightType) {
         // Except only allow addition for STRING
@@ -138,25 +144,29 @@ public Type getTypeBinary(BinaryExpr)(BinaryExpr binaryExpr, SymbolTable symbols
                 throw new SourceException(format("Invalid operation for types STRING"), binaryExpr);
             }
         }
-        return leftType;
+        binaryExpr.type = leftType;
+        return;
     }
     // If one is INT and the other FLOAT, widen to FLOAT
     if (leftType == Type.FLOAT && rightType == Type.INT) {
-        return leftType;
+        binaryExpr.type = leftType;
+        return;
     }
     if (leftType == Type.INT && rightType == Type.FLOAT) {
-        return rightType;
+        binaryExpr.type = rightType;
+        return;
     }
     // Allow multiplying a STRING by an INT
     static if (is(BinaryExpr == MultiplyExpr)) {
         if (leftType == Type.STRING && rightType == Type.INT) {
-            return leftType;
+            binaryExpr.type = leftType;
+            return;
         }
     }
     throw new SourceException(format("Invalid operation for types %s and %s", leftType, rightType), binaryExpr);
 }
 
-public alias getType = getTypeBinary!AddExpr;
-public alias getType = getTypeBinary!SubtractExpr;
-public alias getType = getTypeBinary!MultiplyExpr;
-public alias getType = getTypeBinary!DivideExpr;
+public alias checkType = checkTypeBinary!AddExpr;
+public alias checkType = checkTypeBinary!SubtractExpr;
+public alias checkType = checkTypeBinary!MultiplyExpr;
+public alias checkType = checkTypeBinary!DivideExpr;

@@ -2,15 +2,31 @@ module minilang.ast;
 
 import std.conv : to;
 import std.format : format;
+import std.typecons : Nullable;
 
 import minilang.source;
 import minilang.token;
 import minilang.util;
 
+public enum Type {
+    INT, FLOAT, STRING
+}
+
 public abstract class Expression {
+    private Nullable!Type _type;
+
     protected this(size_t start, size_t end) {
         _start = start;
         _end = end;
+    }
+
+    @property public Type type() {
+        return _type.get();
+    }
+
+    @property public void type(Type type) {
+        assert (_type.isNull());
+        return _type = type;
     }
 
     mixin sourceIndexFields;
@@ -152,10 +168,6 @@ public class Declaration {
 
         public override string toString() {
             return type.to!string().toLowerCase();
-        }
-
-        public static enum Type {
-            INT, FLOAT, STRING
         }
     }
 }
