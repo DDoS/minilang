@@ -14,12 +14,12 @@ while wrong do
     read guess;
     guessCount = guessCount + 1;
     if guess - actual then
+        print "No, try again...";
+    else
         print "You're right!";
         wrong = 0;
         if guessCount + ---1 then
             print "But it took you more than one attempt :\\";
         endif
-    else
-        print "No, try again...";
     endif
 done

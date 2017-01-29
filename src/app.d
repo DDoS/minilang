@@ -9,6 +9,7 @@ import minilang.ast : Program;
 import minilang.parser : parseProgram;
 import minilang.print : prettyPrint;
 import minilang.symbol : SymbolTable, checkType;
+import minilang.codegen : codegen;
 
 int main(string[] args) {
     // Remove the executable name from the arguments
@@ -26,6 +27,8 @@ int main(string[] args) {
             return printCommand(args);
         case "symbols":
             return symbolsCommand(args);
+        case "codegen":
+            return codegenCommand(args);
         default:
             writeln("Unknown command: ", args[0]);
             return 1;
@@ -124,4 +127,28 @@ private int symbolsCommand(string[] args) {
     // Write the symbol output to the file
     symbolOutput.write(symbols.toString());
     return succcess;
+}
+
+private int codegenCommand(string[] args) {
+    // First call the parse command
+    string source = void;
+    Program program = void;
+    if (parseCommand(args, source, program)) {
+        return 1;
+    }
+    // Next get the path of the output file
+    auto codeOutput = args[0].setExtension(".c");
+    // Then do the type checking
+    try {
+        program.checkType();
+    } catch (SourceException exception) {
+        writeln(exception.getErrorInformation(source).toString());
+        return 1;
+    }
+    // Then do the code gen
+    auto printer = new SourcePrinter();
+    program.codegen(printer);
+    // Write the printed output to the file
+    codeOutput.write(printer.toString());
+    return 0;
 }

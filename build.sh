@@ -39,4 +39,5 @@ eval "$DMD_RUN \
     src/minilang/transform.d \
     src/minilang/print.d \
     src/minilang/symbol.d \
+    src/minilang/codegen.d \
 "

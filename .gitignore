@@ -3,3 +3,4 @@
 *.pretty.min
 *.symbol.min
 *.c
+*.out
