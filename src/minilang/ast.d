@@ -182,19 +182,19 @@ public abstract class Statement {
 }
 
 public class ReadStmt : Statement {
-    private Identifier _name;
+    private NameExpr _name;
 
-    public this(Identifier name, size_t start, size_t end) {
+    public this(NameExpr name, size_t start, size_t end) {
         super(start, end);
         _name = name;
     }
 
-    @property public Identifier name() {
+    @property public NameExpr name() {
         return _name;
     }
 
     public override string toString() {
-        return format("Read(%s)", _name.getSource());
+        return format("Read(%s)", _name.toString());
     }
 }
 
@@ -216,16 +216,16 @@ public class PrintStmt : Statement {
 }
 
 public class Assignment : Statement {
-    private Identifier _name;
+    private NameExpr _name;
     private Expression _value;
 
-    public this(Identifier name, Expression value, size_t end) {
+    public this(NameExpr name, Expression value, size_t end) {
         super(name.start, end);
         _name = name;
         _value = value;
     }
 
-    @property public Identifier name() {
+    @property public NameExpr name() {
         return _name;
     }
 
@@ -234,7 +234,7 @@ public class Assignment : Statement {
     }
 
     public override string toString() {
-        return format("Assign(%s = %s)", _name.getSource(), _value.toString());
+        return format("Assign(%s = %s)", _name.toString(), _value.toString());
     }
 }
 

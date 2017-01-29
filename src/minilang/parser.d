@@ -6,12 +6,19 @@ import minilang.lexer;
 import minilang.ast;
 import minilang.util;
 
+private NameExpr parseName(Lexer tokens) {
+    if (tokens.head().kind != TokenKind.IDENTIFIER) {
+        throw new SourceException("Expected an identifier", tokens.head());
+    }
+    auto name = new NameExpr(tokens.head().castOrFail!Identifier());
+    tokens.advance();
+    return name;
+}
+
 private Expression parseAtom(Lexer tokens) {
     switch (tokens.head().kind) with (TokenKind) {
         case IDENTIFIER: {
-            auto token = tokens.head();
-            tokens.advance();
-            return new NameExpr(token.castOrFail!Identifier());
+            return tokens.parseName();
         }
         case LITERAL_STRING: {
             auto token = tokens.head();
@@ -160,12 +167,8 @@ private ReadStmt parseReadStatement(Lexer tokens) {
     }
     auto start = tokens.head().start;
     tokens.advance();
-    // Followed by an identifier
-    if (tokens.head().kind != TokenKind.IDENTIFIER) {
-        throw new SourceException("Expected an identifier", tokens.head());
-    }
-    auto name = tokens.head().castOrFail!Identifier();
-    tokens.advance();
+    // Followed by a name
+    auto name = tokens.parseName();
     // Ends with ';'
     auto end = tokens.parseSemicolon();
     return new ReadStmt(name, start, end);
@@ -186,12 +189,8 @@ private PrintStmt parsePrintStatement(Lexer tokens) {
 }
 
 private Assignment parseAssignment(Lexer tokens) {
-    // Starts with an identifier
-    if (tokens.head().kind != TokenKind.IDENTIFIER) {
-        throw new SourceException("Expected an identifier", tokens.head());
-    }
-    auto name = tokens.head().castOrFail!Identifier();
-    tokens.advance();
+    // Starts with a name
+    auto name = tokens.parseName();
     // Followed by '='
     if (tokens.head().kind != TokenKind.OPERATOR_ASSIGN) {
         throw new SourceException("Expected '='", tokens.head());

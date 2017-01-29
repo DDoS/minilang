@@ -48,10 +48,7 @@ public void checkType(Declaration declaration, SymbolTable symbols) {
 }
 
 public void checkType(ReadStmt readStmt, SymbolTable symbols) {
-    auto variable = readStmt.name.getSource();
-    if (!symbols.exists(variable)) {
-        throw new SourceException(format("Undeclared variable \"%s\"", variable), readStmt.name);
-    }
+    readStmt.name.checkType(symbols);
 }
 
 public void checkType(PrintStmt printStmt, SymbolTable symbols) {
@@ -60,11 +57,9 @@ public void checkType(PrintStmt printStmt, SymbolTable symbols) {
 }
 
 public void checkType(Assignment assignment, SymbolTable symbols) {
-    auto variable = assignment.name.getSource();
-    if (!symbols.exists(variable)) {
-        throw new SourceException(format("Undeclared variable \"%s\"", variable), assignment.name);
-    }
-    auto variableType = symbols.getType(variable);
+    // Check the type of the variable
+    assignment.name.checkType(symbols);
+    auto variableType = assignment.name.type;
     // Check the assignment value type
     assignment.value.transform!checkType(symbols);
     auto valueType = assignment.value.type;

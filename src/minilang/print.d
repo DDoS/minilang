@@ -1,8 +1,5 @@
 module minilang.print;
 
-import std.array : array;
-import std.conv : to;
-
 import minilang.source;
 import minilang.ast;
 import minilang.transform;
@@ -26,9 +23,9 @@ public void prettyPrint(Declaration declaration, SourcePrinter printer) {
 }
 
 public void prettyPrint(ReadStmt readStmt, SourcePrinter printer) {
-    printer.print("read ")
-            .print(readStmt.name.getSource())
-            .print(";");
+    printer.print("read ");
+    readStmt.name.prettyPrint(printer);
+    printer.print(";");
 }
 
 public void prettyPrint(PrintStmt printStmt, SourcePrinter printer) {
@@ -38,7 +35,8 @@ public void prettyPrint(PrintStmt printStmt, SourcePrinter printer) {
 }
 
 public void prettyPrint(Assignment assignment, SourcePrinter printer) {
-    printer.print(assignment.name.getSource()).print(" = ");
+    assignment.name.prettyPrint(printer);
+    printer.print(" = ");
     assignment.value.transform!prettyPrint(printer);
     printer.print(";");
 }
