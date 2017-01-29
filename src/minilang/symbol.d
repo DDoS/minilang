@@ -75,9 +75,9 @@ public void checkType(Assignment assignment, SymbolTable symbols) {
 }
 
 public void checkType(IfStmt ifStmt, SymbolTable symbols) {
-    // Only allow INT or FLOAT for the condition type
+    // Only allow INT for the condition type
     auto conditionType = ifStmt.condition.transform!getType(symbols);
-    if (conditionType != Type.INT && conditionType != Type.FLOAT) {
+    if (conditionType != Type.INT) {
         throw new SourceException(format("Cannot use type %s for a condition", conditionType), ifStmt.condition);
     }
     // Then check the type of the statements in the blocks
@@ -88,9 +88,9 @@ public void checkType(IfStmt ifStmt, SymbolTable symbols) {
 }
 
 public void checkType(WhileStmt whileStmt, SymbolTable symbols) {
-    // Only allow INT or FLOAT for the condition type
+    // Only allow INT for the condition type
     auto conditionType = whileStmt.condition.transform!getType(symbols);
-    if (conditionType != Type.INT && conditionType != Type.FLOAT) {
+    if (conditionType != Type.INT) {
         throw new SourceException(format("Cannot use type %s for a condition", conditionType), whileStmt.condition);
     }
     // Then check the type of the statements in the block
@@ -130,11 +130,12 @@ public Type getType(NegateExpr negateExpr, SymbolTable symbols) {
 public Type getTypeBinary(BinaryExpr)(BinaryExpr binaryExpr, SymbolTable symbols) {
     auto leftType = binaryExpr.left.transform!getType(symbols);
     auto rightType = binaryExpr.right.transform!getType(symbols);
+    // If both types are the same, use that type
     if (leftType == rightType) {
-        // Only allow adding two strings
+        // Except only allow addition for STRING
         static if (!is(BinaryExpr == AddExpr)) {
             if (leftType == Type.STRING) {
-                throw new SourceException(format("Invalid operator for type STRING"), binaryExpr);
+                throw new SourceException(format("Invalid operation for types STRING"), binaryExpr);
             }
         }
         return leftType;
@@ -146,7 +147,13 @@ public Type getTypeBinary(BinaryExpr)(BinaryExpr binaryExpr, SymbolTable symbols
     if (leftType == Type.INT && rightType == Type.FLOAT) {
         return rightType;
     }
-    throw new SourceException(format("Invalid operator for types %s and %s", leftType, rightType), binaryExpr);
+    // Allow multiplying a STRING by an INT
+    static if (is(BinaryExpr == MultiplyExpr)) {
+        if (leftType == Type.STRING && rightType == Type.INT) {
+            return leftType;
+        }
+    }
+    throw new SourceException(format("Invalid operation for types %s and %s", leftType, rightType), binaryExpr);
 }
 
 public alias getType = getTypeBinary!AddExpr;

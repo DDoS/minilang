@@ -10,7 +10,7 @@ guessCount = 0;
 
 print "I'm thinking of a number\nCan you \"guess\" what it is?";
 while wrong do
-    print ":\t";
+    print ":" + "\t" * 2;
     read guess;
     guessCount = guessCount + 1;
     if guess - actual then
