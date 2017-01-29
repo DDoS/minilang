@@ -4,6 +4,7 @@ import std.conv : to;
 import std.string : stripRight;
 import std.algorithm.comparison : min;
 import std.exception : assumeUnique;
+import std.ascii : newline;
 
 import minilang.chars;
 
@@ -80,6 +81,47 @@ unittest {
         reader.collect();
     }
     assert(reader.popCollected() == "hoho l");
+}
+
+public class SourcePrinter {
+    private static enum INDENTATION = "    ";
+    private char[] buffer;
+    private char[] indentation;
+    private bool indentNext = false;
+
+    public this() {
+        buffer.reserve(512);
+        indentation.length = 0;
+    }
+
+    public SourcePrinter print(string str) {
+        if (indentNext) {
+            buffer ~= indentation;
+            indentNext = false;
+        }
+        buffer ~= str;
+        return this;
+    }
+
+    public SourcePrinter indent() {
+        indentation ~= INDENTATION;
+        return this;
+    }
+
+    public SourcePrinter dedent() {
+        indentation.length -= INDENTATION.length;
+        return this;
+    }
+
+    public SourcePrinter newLine() {
+        buffer ~= newline;
+        indentNext = true;
+        return this;
+    }
+
+    public override string toString() {
+        return buffer.idup;
+    }
 }
 
 public mixin template sourceIndexFields() {

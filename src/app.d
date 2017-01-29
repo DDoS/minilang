@@ -3,11 +3,11 @@ import std.stdio : writeln;
 import std.file : readText, write;
 import std.path : setExtension;
 
-import minilang.source : SourceReader, SourceException;
+import minilang.source : SourceReader, SourcePrinter, SourceException;
 import minilang.lexer : Lexer;
 import minilang.ast : Program;
 import minilang.parser : parseProgram;
-import minilang.print : Printer, prettyPrint;
+import minilang.print : prettyPrint;
 import minilang.symbol : SymbolTable, checkType;
 
 int main(string[] args) {
@@ -95,7 +95,7 @@ private int printCommand(string[] args) {
     // Next get the path of the output file
     auto prettyOutput = args[0].setExtension(".pretty.min");
     // Then do the pretty printing
-    auto printer = new Printer();
+    auto printer = new SourcePrinter();
     program.prettyPrint(printer);
     // Write the printed output to the file
     prettyOutput.write(printer.toString());

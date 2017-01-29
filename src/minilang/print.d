@@ -2,13 +2,13 @@ module minilang.print;
 
 import std.array : array;
 import std.conv : to;
-import std.ascii : newline;
 
+import minilang.source;
 import minilang.ast;
 import minilang.transform;
 import minilang.util;
 
-public void prettyPrint(Program program, Printer printer = new Printer()) {
+public void prettyPrint(Program program, SourcePrinter printer = new SourcePrinter()) {
     foreach (declaration; program.declarations) {
         declaration.prettyPrint(printer);
         printer.newLine();
@@ -17,7 +17,7 @@ public void prettyPrint(Program program, Printer printer = new Printer()) {
     program.statements.prettyPrint(printer);
 }
 
-public void prettyPrint(Declaration declaration, Printer printer = new Printer()) {
+public void prettyPrint(Declaration declaration, SourcePrinter printer) {
     printer.print("var ")
             .print(declaration.name.getSource())
             .print(": ")
@@ -25,25 +25,25 @@ public void prettyPrint(Declaration declaration, Printer printer = new Printer()
             .print(";");
 }
 
-public void prettyPrint(ReadStmt readStmt, Printer printer = new Printer()) {
+public void prettyPrint(ReadStmt readStmt, SourcePrinter printer) {
     printer.print("read ")
             .print(readStmt.name.getSource())
             .print(";");
 }
 
-public void prettyPrint(PrintStmt printStmt, Printer printer = new Printer()) {
+public void prettyPrint(PrintStmt printStmt, SourcePrinter printer) {
     printer.print("print ");
     printStmt.value.transform!prettyPrint(printer);
     printer.print(";");
 }
 
-public void prettyPrint(Assignment assignment, Printer printer = new Printer()) {
+public void prettyPrint(Assignment assignment, SourcePrinter printer) {
     printer.print(assignment.name.getSource()).print(" = ");
     assignment.value.transform!prettyPrint(printer);
     printer.print(";");
 }
 
-public void prettyPrint(IfStmt ifStmt, Printer printer = new Printer()) {
+public void prettyPrint(IfStmt ifStmt, SourcePrinter printer) {
     printer.print("if ");
     ifStmt.condition.transform!prettyPrint(printer);
     printer.print(" then").newLine().indent();
@@ -57,7 +57,7 @@ public void prettyPrint(IfStmt ifStmt, Printer printer = new Printer()) {
     printer.print("endif");
 }
 
-public void prettyPrint(WhileStmt whileStmt, Printer printer = new Printer()) {
+public void prettyPrint(WhileStmt whileStmt, SourcePrinter printer) {
     printer.print("while ");
     whileStmt.condition.transform!prettyPrint(printer);
     printer.print(" do").newLine().indent();
@@ -65,14 +65,14 @@ public void prettyPrint(WhileStmt whileStmt, Printer printer = new Printer()) {
     printer.dedent().print("done");
 }
 
-private void prettyPrint(Statement[] statements, Printer printer = new Printer()) {
+private void prettyPrint(Statement[] statements, SourcePrinter printer) {
     foreach (statement; statements) {
         statement.transform!prettyPrint(printer);
         printer.newLine();
     }
 }
 
-public void prettyPrintSimpleExpr(SimpleExpr)(SimpleExpr simpleExpr, Printer printer = new Printer()) {
+public void prettyPrintSimpleExpr(SimpleExpr)(SimpleExpr simpleExpr, SourcePrinter printer) {
     printer.print(simpleExpr.toString());
 }
 
@@ -81,12 +81,12 @@ public alias prettyPrint = prettyPrintSimpleExpr!StringExpr;
 public alias prettyPrint = prettyPrintSimpleExpr!IntExpr;
 public alias prettyPrint = prettyPrintSimpleExpr!FloatExpr;
 
-public void prettyPrint(NegateExpr negateExpr, Printer printer = new Printer()) {
+public void prettyPrint(NegateExpr negateExpr, SourcePrinter printer) {
     printer.print("-");
     negateExpr.inner.transform!prettyPrint(printer);
 }
 
-public void prettyPrintBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, Printer printer = new Printer()) {
+public void prettyPrintBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, SourcePrinter printer) {
     // Check if the left or right children have lower precenence (if so we must use parentheses)
     static if (is(BinaryExpr == MultiplyExpr) || is(BinaryExpr == DivideExpr)) {
         auto parenthesisLeft = cast(AddExpr) binaryExpr.left || cast(SubtractExpr) binaryExpr.left;
@@ -119,44 +119,3 @@ public alias prettyPrint = prettyPrintBinary!(AddExpr, "+");
 public alias prettyPrint = prettyPrintBinary!(SubtractExpr, "-");
 public alias prettyPrint = prettyPrintBinary!(MultiplyExpr, "*");
 public alias prettyPrint = prettyPrintBinary!(DivideExpr, "/");
-
-public class Printer {
-    private static enum INDENTATION = "    ";
-    private char[] buffer;
-    private char[] indentation;
-    private bool indentNext = false;
-
-    public this() {
-        buffer.reserve(512);
-        indentation.length = 0;
-    }
-
-    private Printer print(string str) {
-        if (indentNext) {
-            buffer ~= indentation;
-            indentNext = false;
-        }
-        buffer ~= str;
-        return this;
-    }
-
-    private Printer indent() {
-        indentation ~= INDENTATION;
-        return this;
-    }
-
-    private Printer dedent() {
-        indentation.length -= INDENTATION.length;
-        return this;
-    }
-
-    private Printer newLine() {
-        buffer ~= newline;
-        indentNext = true;
-        return this;
-    }
-
-    public override string toString() {
-        return buffer.idup;
-    }
-}
