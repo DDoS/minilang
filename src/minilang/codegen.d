@@ -22,14 +22,21 @@ public void codegen(Program program, SourcePrinter printer = new SourcePrinter()
     printer.print("#include <stdlib.h>").newLine();
     printer.print("#include <string.h>").newLine();
     printer.newLine();
-    // Then add string handling function for operations on strings
-    printer.print(MALLOC_STRING_FUNC_IMPL).newLine();
+    // Then add string handling code for operations on strings
+    printer.print(STRING_LIST_STRUCT_TYPEDEF).newLine();
+    printer.print(ADD_TO_STRING_LIST_FUNC_IMPL).newLine();
+    printer.print(FREE_STRING_LIST_FUNC_IMPL).newLine();
     printer.print(APPEND_STRING_FUNC_IMPL).newLine();
     printer.print(REPEAT_STRING_FUNC_IMPL).newLine();
     // Next the main function signature
     printer.print("int main(int argc, char** argv) ");
-    // Then open the body and code gen the program declarations and statements
+    // Then open the body
     printer.print("{").newLine().indent();
+    // Declare the string list variable to manage allocation, with a name we hope won't be used
+    printer.print("StringList __stringList;").newLine()
+            .print("memset(&__stringList, 0, sizeof(StringList));").newLine();
+    printer.newLine();
+    // Code gen the program declarations and statements
     foreach (declaration; program.declarations) {
         declaration.codegen(printer);
         printer.newLine();
@@ -115,15 +122,6 @@ public alias codegen = codegenSimpleExpr!IntExpr;
 public alias codegen = codegenSimpleExpr!FloatExpr;
 public alias codegen = codegenSimpleExpr!StringExpr;
 
-/*public void codegen(StringExpr stringExpr, SourcePrinter printer) {
-    // We reallocate the string literal with malloc so it can be
-    // treated the same as the strings allocated from operations
-    printer.print(MALLOC_STRING_FUNC_NAME)
-            .print("(")
-            .print(stringExpr.toString())
-            .print(")");
-}*/
-
 public void codegen(NegateExpr negateExpr, SourcePrinter printer) {
     printer.print("-");
     // Need to add a space if the inner expression is also a negation to disambiguate with the C "--" operator
@@ -141,7 +139,7 @@ public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, So
         } else {
             printer.print(REPEAT_STRING_FUNC_NAME);
         }
-        printer.print("(");
+        printer.print("(&__stringList, ");
         binaryExpr.left.transform!codegen(printer);
         printer.print(", ");
         binaryExpr.right.transform!codegen(printer);
@@ -181,31 +179,51 @@ public alias codegen = codegenBinary!(SubtractExpr, "-");
 public alias codegen = codegenBinary!(MultiplyExpr, "*");
 public alias codegen = codegenBinary!(DivideExpr, "/");
 
-private enum MALLOC_STRING_FUNC_NAME = "mallocStr";
-private enum MALLOC_STRING_FUNC_IMPL =
-`char* ` ~ MALLOC_STRING_FUNC_NAME ~ `(char* literal) {
-    char* str = malloc((strlen(literal) + 1) * sizeof(char));
-    strcpy(str, literal);
-    return str;
+private enum STRING_LIST_STRUCT_TYPEDEF =
+`typedef struct {
+    size_t capacity;
+    size_t length;
+    char** strings;
+} StringList;
+`;
+
+private enum ADD_TO_STRING_LIST_FUNC_NAME = "addStringList";
+private enum ADD_TO_STRING_LIST_FUNC_IMPL =
+`void ` ~ ADD_TO_STRING_LIST_FUNC_NAME ~ `(StringList* list, char* str) {
+    if (list->length >= list->capacity) {
+        list->capacity += 16;
+        list->strings = realloc(list->strings, list->capacity * sizeof(char*));
+    }
+    list->strings[list->length] = str;
+    list->length += 1;
+}
+`;
+
+private enum FREE_STRING_LIST_FUNC_NAME = "freeStringList";
+private enum FREE_STRING_LIST_FUNC_IMPL =
+`void ` ~ FREE_STRING_LIST_FUNC_NAME ~ `(StringList* list) {
+    for (int i = 0; i < list->length; i++) {
+        free(list->strings[i]);
+    }
+    list->length = 0;
 }
 `;
 
 private enum APPEND_STRING_FUNC_NAME = "appendStr";
 private enum APPEND_STRING_FUNC_IMPL =
-`char* ` ~ APPEND_STRING_FUNC_NAME~ `(char* strA, char* strB) {
+`char* ` ~ APPEND_STRING_FUNC_NAME ~ `(StringList* list, char* strA, char* strB) {
     size_t lengthA = strlen(strA);
     char* str = malloc((lengthA + strlen(strB) + 1) * sizeof(char));
     strcpy(str, strA);
     strcpy(str + lengthA, strB);
-    free(strA);
-    free(strB);
+    addStringList(list, str);
     return str;
 }
 `;
 
 private enum REPEAT_STRING_FUNC_NAME = "repeatStr";
 private enum REPEAT_STRING_FUNC_IMPL =
-`char* ` ~ REPEAT_STRING_FUNC_NAME ~ `(char* str, int times) {
+`char* ` ~ REPEAT_STRING_FUNC_NAME ~ `(StringList* list, char* str, int times) {
     if (times < 0) {
         printf("Cannot repeat a string less than 0 times\n");
         exit(1);
@@ -218,7 +236,7 @@ private enum REPEAT_STRING_FUNC_IMPL =
         p += length;
     }
     *p = '\0';
-    free(str);
+    addStringList(list, result);
     return result;
 }
 `;
