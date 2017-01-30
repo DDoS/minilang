@@ -16,6 +16,12 @@ private enum string[Type] minilangTypeToFormat = [
     Type.FLOAT: "%f"
 ];
 
+private enum string[Type] minilangTypeToDefault = [
+    Type.STRING: "\"\"",
+    Type.INT: "0",
+    Type.FLOAT: "0"
+];
+
 public void codegen(Program program, SourcePrinter printer = new SourcePrinter()) {
     // Start by printing the includes
     printer.print("#include <stdio.h>").newLine();
@@ -50,9 +56,12 @@ public void codegen(Program program, SourcePrinter printer = new SourcePrinter()
 }
 
 public void codegen(Declaration declaration, SourcePrinter printer) {
-    printer.print(minilangTypeToC[declaration.typeName.type])
+    auto type = declaration.typeName.type;
+    printer.print(minilangTypeToC[type])
             .print(" ")
             .print(declaration.name.getSource())
+            .print(" = ")
+            .print(minilangTypeToDefault[type])
             .print(";");
 }
 
