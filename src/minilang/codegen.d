@@ -29,9 +29,11 @@ public void codegen(Program program, SourcePrinter printer = new SourcePrinter()
     printer.print("#include <string.h>").newLine();
     printer.newLine();
     // Then add string handling code for operations on strings
-    printer.print(STRING_LIST_STRUCT_TYPEDEF).newLine();
-    printer.print(ADD_TO_STRING_LIST_FUNC_IMPL).newLine();
-    printer.print(FREE_STRING_LIST_FUNC_IMPL).newLine();
+    printer.print(REF_COUNTED_STRUCT_TYPEDEF).newLine();
+    printer.print(REF_COUNT_ALLOC_STRUCT_TYPEDEF).newLine();
+    printer.print(REF_COUNT_ADD_FUNC_IMPL).newLine();
+    printer.print(REF_COUNT_CLEANUP_FUNC_IMPL).newLine();
+    printer.print(REF_COUNT_SWAP_REF_FUNC_IMPL).newLine();
     printer.print(APPEND_STRING_FUNC_IMPL).newLine();
     printer.print(REPEAT_STRING_FUNC_IMPL).newLine();
     // Next the main function signature
@@ -39,8 +41,8 @@ public void codegen(Program program, SourcePrinter printer = new SourcePrinter()
     // Then open the body
     printer.print("{").newLine().indent();
     // Declare the string list variable to manage allocation, with a name we hope won't be used
-    printer.print("StringList __stringList;").newLine()
-            .print("memset(&__stringList, 0, sizeof(StringList));").newLine();
+    printer.print("RefCountAlloc __refCountAlloc;").newLine()
+            .print("memset(&__refCountAlloc, 0, sizeof(RefCountAlloc));").newLine();
     printer.newLine();
     // Code gen the program declarations and statements
     foreach (declaration; program.declarations) {
@@ -87,10 +89,19 @@ public void codegen(PrintStmt printStmt, SourcePrinter printer) {
 }
 
 public void codegen(Assignment assignment, SourcePrinter printer) {
-    assignment.name.codegen(printer);
-    printer.print(" = ");
-    assignment.value.transform!codegen(printer);
-    printer.print(";");
+    // Special case for strings, where we use the allocator
+    if (assignment.name.type == Type.STRING) {
+        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&__refCountAlloc, &");
+        assignment.name.codegen(printer);
+        printer.print(", ");
+        assignment.value.transform!codegen(printer);
+        printer.print(");");
+    } else {
+        assignment.name.codegen(printer);
+        printer.print(" = ");
+        assignment.value.transform!codegen(printer);
+        printer.print(";");
+    }
 }
 
 public void codegen(IfStmt ifStmt, SourcePrinter printer) {
@@ -148,7 +159,7 @@ public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, So
         } else {
             printer.print(REPEAT_STRING_FUNC_NAME);
         }
-        printer.print("(&__stringList, ");
+        printer.print("(&__refCountAlloc, ");
         binaryExpr.left.transform!codegen(printer);
         printer.print(", ");
         binaryExpr.right.transform!codegen(printer);
@@ -188,51 +199,115 @@ public alias codegen = codegenBinary!(SubtractExpr, "-");
 public alias codegen = codegenBinary!(MultiplyExpr, "*");
 public alias codegen = codegenBinary!(DivideExpr, "/");
 
-private enum STRING_LIST_STRUCT_TYPEDEF =
+private enum REF_COUNTED_STRUCT_TYPEDEF =
+`typedef struct {
+    size_t count;
+    void* memory;
+} RefCounted;
+`;
+
+private enum REF_COUNT_ALLOC_STRUCT_TYPEDEF =
 `typedef struct {
     size_t capacity;
     size_t length;
-    char** strings;
-} StringList;
+    RefCounted* memories;
+} RefCountAlloc;
 `;
 
-private enum ADD_TO_STRING_LIST_FUNC_NAME = "addStringList";
-private enum ADD_TO_STRING_LIST_FUNC_IMPL =
-`void ` ~ ADD_TO_STRING_LIST_FUNC_NAME ~ `(StringList* list, char* str) {
-    if (list->length >= list->capacity) {
-        list->capacity += 16;
-        list->strings = realloc(list->strings, list->capacity * sizeof(char*));
+private enum REF_COUNT_ADD_FUNC_NAME = "refCountAdd";
+private enum REF_COUNT_ADD_FUNC_IMPL =
+`void ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(RefCountAlloc* alloc, void* memory) {
+    if (alloc->length >= alloc->capacity) {
+        alloc->capacity += 16;
+        alloc->memories = realloc(alloc->memories, alloc->capacity * sizeof(RefCounted));
     }
-    list->strings[list->length] = str;
-    list->length += 1;
+    RefCounted* refCounted = alloc->memories + alloc->length;
+    refCounted->count = 0;
+    refCounted->memory = memory;
+    alloc->length += 1;
+    printf("added %s\n", (char*) memory);
 }
 `;
 
-private enum FREE_STRING_LIST_FUNC_NAME = "freeStringList";
-private enum FREE_STRING_LIST_FUNC_IMPL =
-`void ` ~ FREE_STRING_LIST_FUNC_NAME ~ `(StringList* list) {
-    for (int i = 0; i < list->length; i++) {
-        free(list->strings[i]);
+private enum REF_COUNT_SWAP_REF_FUNC_NAME = "refCountSwapRef";
+private enum REF_COUNT_SWAP_REF_FUNC_IMPL =
+`void ` ~ REF_COUNT_SWAP_REF_FUNC_NAME ~ `(RefCountAlloc* alloc, void* oldPtr, void* new) {
+    void* old = *(void**) oldPtr;
+    for (int i = 0; i < alloc->length; i++) {
+        RefCounted* refCounted = alloc->memories + i;
+        // Increment the reference count of the memory being swapped in
+        if (refCounted->memory == new) {
+            refCounted->count += 1;
+        }
+        // Decrement the reference count of the memory being swapped out
+        if (refCounted->memory == old) {
+            refCounted->count -= 1;
+        }
     }
-    list->length = 0;
+    // Perform a cleanup of the memory
+    ` ~ REF_COUNT_CLEANUP_FUNC_NAME ~ `(alloc);
+    // Swap the references
+    *(void**) oldPtr = new;
+}
+`;
+
+private enum REF_COUNT_CLEANUP_FUNC_NAME = "refCountCleanup";
+private enum REF_COUNT_CLEANUP_FUNC_IMPL =
+`void ` ~ REF_COUNT_CLEANUP_FUNC_NAME ~ `(RefCountAlloc* alloc) {
+    // Check if we have anything to cleanup first
+    size_t length = alloc->length;
+    if (length <= 0) {
+        return;
+    }
+    RefCounted* memories = alloc->memories;
+    // Start from the end
+    size_t cleanEnd = length;
+    do {
+        // Find the last memory that has 0 references to it
+        while (cleanEnd >= 1 && memories[cleanEnd - 1].count > 0) {
+            cleanEnd -= 1;
+        }
+        // Then count all the ones that come before it that are also unreferenced
+        size_t cleanStart = cleanEnd;
+        while (cleanStart >= 1) {
+            RefCounted* refCounted = memories + cleanStart - 1;
+            if (refCounted->count <= 0) {
+                // Free the memory if unused
+                printf("freed %s\n", (char*) refCounted->memory);
+                free(refCounted->memory);
+            } else {
+                // Stop at the first that is referenced
+                break;
+            }
+            cleanStart -= 1;
+        }
+        // Then copy over unreferenced memories with the referenced ones that come after
+        memmove(memories + cleanStart, memories + cleanEnd, length - cleanEnd);
+        // Remove the cleaned memories from the count
+        length -= cleanEnd - cleanStart;
+        // Loop back to clean the rest of the list
+        cleanEnd = cleanStart;
+    } while (cleanEnd >= 1);
+    // Update the length to the one after cleanup
+    alloc->length = length;
 }
 `;
 
 private enum APPEND_STRING_FUNC_NAME = "appendStr";
 private enum APPEND_STRING_FUNC_IMPL =
-`char* ` ~ APPEND_STRING_FUNC_NAME ~ `(StringList* list, char* strA, char* strB) {
+`char* ` ~ APPEND_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc, char* strA, char* strB) {
     size_t lengthA = strlen(strA);
     char* str = malloc((lengthA + strlen(strB) + 1) * sizeof(char));
     strcpy(str, strA);
     strcpy(str + lengthA, strB);
-    addStringList(list, str);
+    refCountAdd(alloc, str);
     return str;
 }
 `;
 
 private enum REPEAT_STRING_FUNC_NAME = "repeatStr";
 private enum REPEAT_STRING_FUNC_IMPL =
-`char* ` ~ REPEAT_STRING_FUNC_NAME ~ `(StringList* list, char* str, int times) {
+`char* ` ~ REPEAT_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc, char* str, int times) {
     if (times < 0) {
         printf("Cannot repeat a string less than 0 times\n");
         exit(1);
@@ -245,7 +320,7 @@ private enum REPEAT_STRING_FUNC_IMPL =
         p += length;
     }
     *p = '\0';
-    addStringList(list, result);
+    refCountAdd(alloc, result);
     return result;
 }
 `;
