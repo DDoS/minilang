@@ -8,18 +8,18 @@ guess = 0;
 wrong = 1;
 guessCount = 0;
 
-print "I'm thinking of a number\nCan you \"guess\" what it is?";
+print "I'm thinking of a number\nCan you \"guess\" what it is?\n";
 while wrong do
-    print ":" + "\t" * 2;
+    print " " * 4 + ": ";
     read guess;
     guessCount = guessCount + 1;
     if guess - actual then
-        print "No, try again...";
+        print "No, try again...\n";
     else
-        print "You're right!";
+        print "You're right!\n";
         wrong = 0;
         if guessCount + ---1 then
-            print "But it took you more than one attempt :\\";
+            print "But it took you more than one attempt :\\\n";
         endif
     endif
 done
