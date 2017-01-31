@@ -31,7 +31,7 @@ private enum string[Type] minilangTypeToReader = [
 private enum string[Type] minilangTypeToDefault = [
     Type.STRING: "\"\"",
     Type.INT: "0",
-    Type.FLOAT: "0"
+    Type.FLOAT: "0.0"
 ];
 
 public void codegen(Program program, SourcePrinter printer) {
