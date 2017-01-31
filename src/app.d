@@ -116,7 +116,7 @@ private int symbolsCommand(string[] args) {
         return 1;
     }
     // Next get the path of the output file
-    auto symbolOutput = args[0].setExtension(".symbol.min");
+    auto symbolOutput = args[0].setExtension(".symbol.txt");
     // Then do the type checking
     auto symbols = new SymbolTable();
     int succcess = void;
