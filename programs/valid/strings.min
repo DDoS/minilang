@@ -1,7 +1,0 @@
-var s1: string;
-var s2: string;
-
-s1 = "lol" * 2;
-s2 = "lel" * 2;
-
-s1 = s2;

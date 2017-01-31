@@ -1,10 +1,10 @@
-/// Factorial of n // Weird comment
-
+//// Factorial of n
 // Declare n, the factorial of N and the index int
 var n: int;
 var factN: int;
 var i: int;
 // Read the value of n
+print "Enter a number: ";
 read n;
 // Factorial of 0
 factN = 1;
@@ -16,4 +16,4 @@ while n - i do
 done
 // Print the result
 print factN;
-// Weird trailing comment
+print "\n";
