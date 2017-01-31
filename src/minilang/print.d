@@ -5,7 +5,7 @@ import minilang.ast;
 import minilang.transform;
 import minilang.util;
 
-public void prettyPrint(Program program, SourcePrinter printer = new SourcePrinter()) {
+public void prettyPrint(Program program, SourcePrinter printer) {
     foreach (declaration; program.declarations) {
         declaration.prettyPrint(printer);
         printer.newLine();
