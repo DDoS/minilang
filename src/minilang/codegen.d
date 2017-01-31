@@ -236,7 +236,6 @@ private enum REF_COUNT_ADD_FUNC_IMPL =
     refCounted->count = 0;
     refCounted->memory = memory;
     alloc->length += 1;
-    printf("added %s\n", (char*) memory);
 }
 `;
 
@@ -284,7 +283,6 @@ private enum REF_COUNT_CLEANUP_FUNC_IMPL =
             RefCounted* refCounted = memories + cleanStart - 1;
             if (refCounted->count <= 0) {
                 // Free the memory if unused
-                printf("freed %s\n", (char*) refCounted->memory);
                 free(refCounted->memory);
             } else {
                 // Stop at the first that is referenced
