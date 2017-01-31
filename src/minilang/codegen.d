@@ -16,6 +16,12 @@ private enum string[Type] minilangTypeToFormat = [
     Type.FLOAT: "%f"
 ];
 
+private enum string[Type] minilangTypeToReader = [
+    Type.STRING: READ_STRING_FUNC_NAME,
+    Type.INT: READ_INT_FUNC_NAME,
+    Type.FLOAT: READ_FLOAT_FUNC_NAME
+];
+
 private enum string[Type] minilangTypeToDefault = [
     Type.STRING: "\"\"",
     Type.INT: "0",
@@ -27,8 +33,9 @@ public void codegen(Program program, SourcePrinter printer = new SourcePrinter()
     printer.print("#include <stdio.h>").newLine();
     printer.print("#include <stdlib.h>").newLine();
     printer.print("#include <string.h>").newLine();
+    printer.print("#include <ctype.h>").newLine();
     printer.newLine();
-    // Then add string handling code for operations on strings
+    // Then add functions used to implement various operators and statements
     printer.print(REF_COUNTED_STRUCT_TYPEDEF).newLine();
     printer.print(REF_COUNT_ALLOC_STRUCT_TYPEDEF).newLine();
     printer.print(REF_COUNT_ADD_FUNC_IMPL).newLine();
@@ -36,6 +43,9 @@ public void codegen(Program program, SourcePrinter printer = new SourcePrinter()
     printer.print(REF_COUNT_SWAP_REF_FUNC_IMPL).newLine();
     printer.print(APPEND_STRING_FUNC_IMPL).newLine();
     printer.print(REPEAT_STRING_FUNC_IMPL).newLine();
+    printer.print(READ_INT_FUNC_IMPL).newLine();
+    printer.print(READ_FLOAT_FUNC_IMPL).newLine();
+    printer.print(READ_STRING_FUNC_IMPL).newLine();
     // Next the main function signature
     printer.print("int main(int argc, char** argv) ");
     // Then open the body
@@ -69,15 +79,16 @@ public void codegen(Declaration declaration, SourcePrinter printer) {
 
 public void codegen(ReadStmt readStmt, SourcePrinter printer) {
     auto nameType = readStmt.name.type;
-    printer.print("scanf(\"")
-            .print(minilangTypeToFormat[nameType])
-            .print("\", ");
-    // Must pass ints and floats as pointers
-    if (nameType == Type.INT || nameType == Type.FLOAT) {
-        printer.print("&");
+    if (nameType == Type.STRING) {
+        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&__refCountAlloc, &");
+        readStmt.name.codegen(printer);
+        printer.print(", " ~ minilangTypeToReader[nameType] ~ "(&__refCountAlloc));");
+    } else {
+        readStmt.name.codegen(printer);
+        printer.print(" = ")
+                .print(minilangTypeToReader[nameType])
+                .print("();");
     }
-    readStmt.name.codegen(printer);
-    printer.print(");");
 }
 
 public void codegen(PrintStmt printStmt, SourcePrinter printer) {
@@ -282,7 +293,7 @@ private enum REF_COUNT_CLEANUP_FUNC_IMPL =
             cleanStart -= 1;
         }
         // Then copy over unreferenced memories with the referenced ones that come after
-        memmove(memories + cleanStart, memories + cleanEnd, length - cleanEnd);
+        memmove(memories + cleanStart, memories + cleanEnd, (length - cleanEnd) * sizeof(RefCounted));
         // Remove the cleaned memories from the count
         length -= cleanEnd - cleanStart;
         // Loop back to clean the rest of the list
@@ -300,7 +311,7 @@ private enum APPEND_STRING_FUNC_IMPL =
     char* str = malloc((lengthA + strlen(strB) + 1) * sizeof(char));
     strcpy(str, strA);
     strcpy(str + lengthA, strB);
-    refCountAdd(alloc, str);
+    ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(alloc, str);
     return str;
 }
 `;
@@ -320,7 +331,56 @@ private enum REPEAT_STRING_FUNC_IMPL =
         p += length;
     }
     *p = '\0';
-    refCountAdd(alloc, result);
+    ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(alloc, result);
     return result;
+}
+`;
+
+private enum READ_INT_FUNC_NAME = "readInt";
+private enum READ_INT_FUNC_IMPL =
+`int ` ~ READ_INT_FUNC_NAME ~ `() {
+    int i;
+    while (scanf("%d", &i) != 1) {
+        while (getchar() != '\n') {
+        }
+    }
+    return i;
+}
+`;
+
+private enum READ_FLOAT_FUNC_NAME = "readFloat";
+private enum READ_FLOAT_FUNC_IMPL =
+`float ` ~ READ_FLOAT_FUNC_NAME ~ `() {
+    float f;
+    while (scanf("%f", &f) != 1) {
+        while (getchar() != '\n') {
+        }
+    }
+    return f;
+}
+`;
+
+private enum READ_STRING_FUNC_NAME = "readString";
+private enum READ_STRING_FUNC_IMPL =
+`char* ` ~ READ_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc) {
+    size_t capacity = 0;
+    size_t length = 1;
+    char* str = NULL;
+    char c;
+    while ((c = getchar()) != EOF && !isspace(c)) {
+        if (length >= capacity) {
+            capacity += 16;
+            str = realloc(str, capacity * sizeof(char));
+        }
+        str[length - 1] = c;
+        length += 1;
+    }
+    if (str == NULL) {
+        str = "";
+    } else {
+        str[length - 1] = '\0';
+        ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(alloc, str);
+    }
+    return str;
 }
 `;
