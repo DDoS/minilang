@@ -1,5 +1,11 @@
 module minilang.codegen;
 
+import std.conv : to;
+import std.exception : assumeUnique;
+import std.range.primitives : isInputRange, ElementType;
+import std.ascii : isLower, isUpper, isDigit, toLower, toUpper;
+import std.algorithm.iteration : map;
+
 import minilang.source;
 import minilang.ast;
 import minilang.transform;
@@ -28,7 +34,7 @@ private enum string[Type] minilangTypeToDefault = [
     Type.FLOAT: "0"
 ];
 
-public void codegen(Program program, SourcePrinter printer = new SourcePrinter()) {
+public void codegen(Program program, SourcePrinter printer) {
     // Start by printing the includes
     printer.print("#include <stdio.h>").newLine();
     printer.print("#include <stdlib.h>").newLine();
@@ -50,24 +56,25 @@ public void codegen(Program program, SourcePrinter printer = new SourcePrinter()
     printer.print("int main(int argc, char** argv) ");
     // Then open the body
     printer.print("{").newLine().indent();
-    // Declare the string list variable to manage allocation, with a name we hope won't be used
-    printer.print("RefCountAlloc __refCountAlloc;").newLine()
-            .print("memset(&__refCountAlloc, 0, sizeof(RefCountAlloc));").newLine();
+    // Declare the string list variable to manage allocation, with a unique name
+    auto allocatorName = program.declarations.map!(decl => decl.name.getSource()).uniqueToAll();
+    printer.print("RefCountAlloc ").print(allocatorName).print(";").newLine()
+            .print("memset(&").print(allocatorName).print(", 0, sizeof(RefCountAlloc));").newLine();
     printer.newLine();
     // Code gen the program declarations and statements
     foreach (declaration; program.declarations) {
-        declaration.codegen(printer);
+        declaration.codegen(printer, allocatorName);
         printer.newLine();
     }
     printer.newLine();
-    program.statements.codegen(printer);
+    program.statements.codegen(printer, allocatorName);
     // Return success by default
     printer.print("return 0;").newLine();
     // Close the body
     printer.dedent().print("}").newLine();
 }
 
-public void codegen(Declaration declaration, SourcePrinter printer) {
+public void codegen(Declaration declaration, SourcePrinter printer, string allocatorName) {
     auto type = declaration.typeName.type;
     printer.print(minilangTypeToC[type])
             .print(" ")
@@ -77,74 +84,74 @@ public void codegen(Declaration declaration, SourcePrinter printer) {
             .print(";");
 }
 
-public void codegen(ReadStmt readStmt, SourcePrinter printer) {
+public void codegen(ReadStmt readStmt, SourcePrinter printer, string allocatorName) {
     auto nameType = readStmt.name.type;
     if (nameType == Type.STRING) {
-        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&__refCountAlloc, &");
-        readStmt.name.codegen(printer);
-        printer.print(", " ~ minilangTypeToReader[nameType] ~ "(&__refCountAlloc));");
+        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&").print(allocatorName).print(", &");
+        readStmt.name.codegen(printer, allocatorName);
+        printer.print(", " ~ minilangTypeToReader[nameType] ~ "(&").print(allocatorName).print("));");
     } else {
-        readStmt.name.codegen(printer);
+        readStmt.name.codegen(printer, allocatorName);
         printer.print(" = ")
                 .print(minilangTypeToReader[nameType])
                 .print("();");
     }
 }
 
-public void codegen(PrintStmt printStmt, SourcePrinter printer) {
+public void codegen(PrintStmt printStmt, SourcePrinter printer, string allocatorName) {
     printer.print("printf(\"")
             .print(minilangTypeToFormat[printStmt.value.type])
             .print("\", ");
-    printStmt.value.transform!codegen(printer);
+    printStmt.value.transform!codegen(printer, allocatorName);
     printer.print(");");
 }
 
-public void codegen(Assignment assignment, SourcePrinter printer) {
+public void codegen(Assignment assignment, SourcePrinter printer, string allocatorName) {
     // Special case for strings, where we use the allocator
     if (assignment.name.type == Type.STRING) {
-        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&__refCountAlloc, &");
-        assignment.name.codegen(printer);
+        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&").print(allocatorName).print(", &");
+        assignment.name.codegen(printer, allocatorName);
         printer.print(", ");
-        assignment.value.transform!codegen(printer);
+        assignment.value.transform!codegen(printer, allocatorName);
         printer.print(");");
     } else {
-        assignment.name.codegen(printer);
+        assignment.name.codegen(printer, allocatorName);
         printer.print(" = ");
-        assignment.value.transform!codegen(printer);
+        assignment.value.transform!codegen(printer, allocatorName);
         printer.print(";");
     }
 }
 
-public void codegen(IfStmt ifStmt, SourcePrinter printer) {
+public void codegen(IfStmt ifStmt, SourcePrinter printer, string allocatorName) {
     printer.print("if (");
-    ifStmt.condition.transform!codegen(printer);
+    ifStmt.condition.transform!codegen(printer, allocatorName);
     printer.print(") {").newLine().indent();
-    ifStmt.statements.codegen(printer);
+    ifStmt.statements.codegen(printer, allocatorName);
     printer.dedent();
     if (ifStmt.elseBlock !is null) {
         printer.print("} else {").newLine().indent();
-        ifStmt.elseBlock.statements.codegen(printer);
+        ifStmt.elseBlock.statements.codegen(printer, allocatorName);
         printer.dedent();
     }
     printer.print("}");
 }
 
-public void codegen(WhileStmt whileStmt, SourcePrinter printer) {
+public void codegen(WhileStmt whileStmt, SourcePrinter printer, string allocatorName) {
     printer.print("while (");
-    whileStmt.condition.transform!codegen(printer);
+    whileStmt.condition.transform!codegen(printer, allocatorName);
     printer.print(") {").newLine().indent();
-    whileStmt.statements.codegen(printer);
+    whileStmt.statements.codegen(printer, allocatorName);
     printer.dedent().print("}");
 }
 
-private void codegen(Statement[] statements, SourcePrinter printer) {
+private void codegen(Statement[] statements, SourcePrinter printer, string allocatorName) {
     foreach (statement; statements) {
-        statement.transform!codegen(printer);
+        statement.transform!codegen(printer, allocatorName);
         printer.newLine();
     }
 }
 
-public void codegenSimpleExpr(SimpleExpr)(SimpleExpr simpleExpr, SourcePrinter printer) {
+public void codegenSimpleExpr(SimpleExpr)(SimpleExpr simpleExpr, SourcePrinter printer, string allocatorName) {
     printer.print(simpleExpr.toString());
 }
 
@@ -153,16 +160,16 @@ public alias codegen = codegenSimpleExpr!IntExpr;
 public alias codegen = codegenSimpleExpr!FloatExpr;
 public alias codegen = codegenSimpleExpr!StringExpr;
 
-public void codegen(NegateExpr negateExpr, SourcePrinter printer) {
+public void codegen(NegateExpr negateExpr, SourcePrinter printer, string allocatorName) {
     printer.print("-");
     // Need to add a space if the inner expression is also a negation to disambiguate with the C "--" operator
     if (cast(NegateExpr) negateExpr.inner) {
         printer.print(" ");
     }
-    negateExpr.inner.transform!codegen(printer);
+    negateExpr.inner.transform!codegen(printer, allocatorName);
 }
 
-public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, SourcePrinter printer) {
+public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, SourcePrinter printer, string allocatorName) {
     // Special cases for string operations, which are implemented as functions
     if (binaryExpr.left.type == Type.STRING) {
         static if (is(BinaryExpr == AddExpr)) {
@@ -170,10 +177,10 @@ public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, So
         } else {
             printer.print(REPEAT_STRING_FUNC_NAME);
         }
-        printer.print("(&__refCountAlloc, ");
-        binaryExpr.left.transform!codegen(printer);
+        printer.print("(&").print(allocatorName).print(", ");
+        binaryExpr.left.transform!codegen(printer, allocatorName);
         printer.print(", ");
-        binaryExpr.right.transform!codegen(printer);
+        binaryExpr.right.transform!codegen(printer, allocatorName);
         printer.print(")");
         return;
     }
@@ -189,7 +196,7 @@ public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, So
     if (parenthesisLeft) {
         printer.print("(");
     }
-    binaryExpr.left.transform!codegen(printer);
+    binaryExpr.left.transform!codegen(printer, allocatorName);
     if (parenthesisLeft) {
         printer.print(")");
     }
@@ -199,7 +206,7 @@ public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, So
     if (parenthesisRight) {
         printer.print("(");
     }
-    binaryExpr.right.transform!codegen(printer);
+    binaryExpr.right.transform!codegen(printer, allocatorName);
     if (parenthesisRight) {
         printer.print(")");
     }
@@ -209,6 +216,36 @@ public alias codegen = codegenBinary!(AddExpr, "+");
 public alias codegen = codegenBinary!(SubtractExpr, "-");
 public alias codegen = codegenBinary!(MultiplyExpr, "*");
 public alias codegen = codegenBinary!(DivideExpr, "/");
+
+public string uniqueToAll(Range)(Range strings) if (isInputRange!Range && is(ElementType!Range == string)) {
+    char different(char c) {
+        if (c.isLower()) {
+            return c.toUpper();
+        }
+        if (c.isUpper()) {
+            return c.toLower();
+        }
+        if (c.isDigit()) {
+            return cast(char) ((c - '0' + 1) % 10 + '0');
+        }
+        if (c == '_') {
+            return '0';
+        }
+        throw new Error("Not a valid identifier character: \\" ~ (cast(ubyte) c).to!string());
+    }
+
+    char[] buffer;
+    size_t i = 0;
+    foreach (s; strings) {
+        if (i < s.length) {
+            buffer ~= different(s[i]);
+        } else {
+            buffer ~= '_';
+        }
+        i += 1;
+    }
+    return buffer.assumeUnique();
+}
 
 private enum REF_COUNTED_STRUCT_TYPEDEF =
 `typedef struct {
