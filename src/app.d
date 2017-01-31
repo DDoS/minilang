@@ -2,6 +2,7 @@ import std.getopt : getopt, config;
 import std.stdio : writeln;
 import std.file : readText, write;
 import std.path : setExtension;
+import std.process : Redirect, pipeProcess, wait;
 
 import minilang.source : SourceReader, SourcePrinter, SourceException;
 import minilang.lexer : Lexer;
@@ -29,6 +30,8 @@ int main(string[] args) {
             return symbolsCommand(args);
         case "codegen":
             return codegenCommand(args);
+        case "compile":
+            return compileCommand(args);
         default:
             writeln("Unknown command: ", args[0]);
             return 1;
@@ -151,4 +154,50 @@ private int codegenCommand(string[] args) {
     // Write the printed output to the file
     codeOutput.write(printer.toString());
     return 0;
+}
+
+private int compileCommand(string[] args) {
+    // First get the path of the output file (might not exists)
+    string outputBin = null;
+    args.getopt(config.caseSensitive, "output|o", &outputBin);
+    // Remove the "compile" command from the arguments
+    args = args[1 .. $];
+    // Check that we have the source to parse as an argument
+    if (args.length <= 0) {
+        writeln("Expected a file path");
+        return 1;
+    }
+    auto inputSource = args[0];
+    // If no output source was specified, use the input one without an extension
+    if (outputBin is null) {
+        outputBin = inputSource.setExtension("");
+    }
+    // Get the source text
+    string source = void;
+    try {
+        source = inputSource.readText();
+    } catch (Exception exception) {
+        writeln("Could not read file: ", exception.msg);
+        return 1;
+    }
+    // Then do the lexing, parsing and type checking
+    Program program = void;
+    try {
+        auto reader = new SourceReader(source);
+        auto lexer = new Lexer(reader);
+        program = lexer.parseProgram();
+        program.checkType();
+    } catch (SourceException exception) {
+        writeln(exception.getErrorInformation(source).toString());
+        return 1;
+    }
+    // Then do the code gen
+    auto printer = new SourcePrinter();
+    program.codegen(printer);
+    // Finally pass the source code to the default C compiler
+    auto pipe = pipeProcess(["cc", "-xc", "-o", outputBin, "-"], Redirect.stdin);
+    pipe.stdin.write(printer.toString());
+    pipe.stdin.flush();
+    pipe.stdin.close();
+    return wait(pipe.pid);
 }
