@@ -45,13 +45,15 @@ public void codegen(Program program, SourcePrinter printer) {
     printer.print(REF_COUNTED_STRUCT_TYPEDEF).newLine();
     printer.print(REF_COUNT_ALLOC_STRUCT_TYPEDEF).newLine();
     printer.print(REF_COUNT_ADD_FUNC_IMPL).newLine();
-    printer.print(REF_COUNT_CLEANUP_FUNC_IMPL).newLine();
-    printer.print(REF_COUNT_SWAP_REF_FUNC_IMPL).newLine();
+    printer.print(REF_COUNT_HOLD_FUNC_IMPL).newLine();
+    printer.print(REF_COUNT_RELEASE_FUNC_IMPL).newLine();
+    printer.print(REF_COUNT_SWAP_FUNC_IMPL).newLine();
     printer.print(APPEND_STRING_FUNC_IMPL).newLine();
     printer.print(REPEAT_STRING_FUNC_IMPL).newLine();
     printer.print(READ_INT_FUNC_IMPL).newLine();
     printer.print(READ_FLOAT_FUNC_IMPL).newLine();
     printer.print(READ_STRING_FUNC_IMPL).newLine();
+    printer.print(PRINT_STRING_FUNC_IMPL).newLine();
     // Next the main function signature
     printer.print("int main(int argc, char** argv) ");
     // Then open the body
@@ -87,7 +89,7 @@ public void codegen(Declaration declaration, SourcePrinter printer, string alloc
 public void codegen(ReadStmt readStmt, SourcePrinter printer, string allocatorName) {
     auto nameType = readStmt.name.type;
     if (nameType == Type.STRING) {
-        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&").print(allocatorName).print(", &");
+        printer.print(REF_COUNT_SWAP_FUNC_NAME ~ "(&").print(allocatorName).print(", &");
         readStmt.name.codegen(printer, allocatorName);
         printer.print(", " ~ minilangTypeToReader[nameType] ~ "(&").print(allocatorName).print("));");
     } else {
@@ -99,17 +101,24 @@ public void codegen(ReadStmt readStmt, SourcePrinter printer, string allocatorNa
 }
 
 public void codegen(PrintStmt printStmt, SourcePrinter printer, string allocatorName) {
-    printer.print("printf(\"")
-            .print(minilangTypeToFormat[printStmt.value.type])
-            .print("\", ");
-    printStmt.value.transform!codegen(printer, allocatorName);
-    printer.print(");");
+    // Special case for strings, to ensure that memory is managed
+    if (printStmt.value.type == Type.STRING) {
+        printer.print(PRINT_STRING_FUNC_NAME ~ "(&").print(allocatorName).print(", ");
+        printStmt.value.transform!codegen(printer, allocatorName);
+        printer.print(");");
+    } else {
+        printer.print("printf(\"")
+                .print(minilangTypeToFormat[printStmt.value.type])
+                .print("\", ");
+        printStmt.value.transform!codegen(printer, allocatorName);
+        printer.print(");");
+    }
 }
 
 public void codegen(Assignment assignment, SourcePrinter printer, string allocatorName) {
     // Special case for strings, where we use the allocator
     if (assignment.name.type == Type.STRING) {
-        printer.print(REF_COUNT_SWAP_REF_FUNC_NAME ~ "(&").print(allocatorName).print(", &");
+        printer.print(REF_COUNT_SWAP_FUNC_NAME ~ "(&").print(allocatorName).print(", &");
         assignment.name.codegen(printer, allocatorName);
         printer.print(", ");
         assignment.value.transform!codegen(printer, allocatorName);
@@ -265,10 +274,18 @@ private enum REF_COUNT_ALLOC_STRUCT_TYPEDEF =
 private enum REF_COUNT_ADD_FUNC_NAME = "refCountAdd";
 private enum REF_COUNT_ADD_FUNC_IMPL =
 `void ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(RefCountAlloc* alloc, void* memory) {
+    // Check that it wasn't added first (don't re-add)
+    for (size_t i = 0; i < alloc->length; i++) {
+        if ((alloc->memories + i)->memory == memory) {
+            return;
+        }
+    }
+    // Make room in the list if needed
     if (alloc->length >= alloc->capacity) {
         alloc->capacity += 16;
         alloc->memories = realloc(alloc->memories, alloc->capacity * sizeof(RefCounted));
     }
+    // Add to the list
     RefCounted* refCounted = alloc->memories + alloc->length;
     refCounted->count = 0;
     refCounted->memory = memory;
@@ -276,77 +293,72 @@ private enum REF_COUNT_ADD_FUNC_IMPL =
 }
 `;
 
-private enum REF_COUNT_SWAP_REF_FUNC_NAME = "refCountSwapRef";
-private enum REF_COUNT_SWAP_REF_FUNC_IMPL =
-`void ` ~ REF_COUNT_SWAP_REF_FUNC_NAME ~ `(RefCountAlloc* alloc, void* oldPtr, void* new) {
-    void* old = *(void**) oldPtr;
-    for (int i = 0; i < alloc->length; i++) {
+private enum REF_COUNT_HOLD_FUNC_NAME = "refCountHold";
+private enum REF_COUNT_HOLD_FUNC_IMPL =
+`void ` ~ REF_COUNT_HOLD_FUNC_NAME ~ `(RefCountAlloc* alloc, void* memory) {
+    // Increment the reference count
+    for (size_t i = 0; i < alloc->length; i++) {
         RefCounted* refCounted = alloc->memories + i;
-        // Increment the reference count of the memory being swapped in
-        if (refCounted->memory == new) {
+        if (refCounted->memory == memory) {
             refCounted->count += 1;
-        }
-        // Decrement the reference count of the memory being swapped out
-        if (refCounted->memory == old) {
-            refCounted->count -= 1;
+            break;
         }
     }
-    // Perform a cleanup of the memory
-    ` ~ REF_COUNT_CLEANUP_FUNC_NAME ~ `(alloc);
-    // Swap the references
-    *(void**) oldPtr = new;
+}`;
+
+private enum REF_COUNT_RELEASE_FUNC_NAME = "refCountRelease";
+private enum REF_COUNT_RELEASE_FUNC_IMPL =
+`void ` ~ REF_COUNT_RELEASE_FUNC_NAME ~ `(RefCountAlloc* alloc, void* memory) {
+    RefCounted* memories = alloc->memories;
+    size_t length = alloc->length;
+    RefCounted* refCounted;
+    size_t index;
+    // Decrement the reference count
+    for (index = 0; index < length; index++) {
+        refCounted = memories + index;
+        if (refCounted->memory == memory) {
+            if (refCounted->count > 0) {
+                refCounted->count -= 1;
+            }
+            break;
+        }
+    }
+    // If the reference count hits 0, then free and remove
+    if (index >= length || refCounted->count > 0) {
+        return;
+    }
+    free(memory);
+    size_t nextIndex = index + 1;
+    memmove(memories + index, memories + nextIndex, (length - nextIndex) * sizeof(RefCounted));
+     alloc->length = length - 1;
 }
 `;
 
-private enum REF_COUNT_CLEANUP_FUNC_NAME = "refCountCleanup";
-private enum REF_COUNT_CLEANUP_FUNC_IMPL =
-`void ` ~ REF_COUNT_CLEANUP_FUNC_NAME ~ `(RefCountAlloc* alloc) {
-    // Check if we have anything to cleanup first
-    size_t length = alloc->length;
-    if (length <= 0) {
-        return;
-    }
-    RefCounted* memories = alloc->memories;
-    // Start from the end
-    size_t cleanEnd = length;
-    do {
-        // Find the last memory that has 0 references to it
-        while (cleanEnd >= 1 && memories[cleanEnd - 1].count > 0) {
-            cleanEnd -= 1;
-        }
-        // Then count all the ones that come before it that are also unreferenced
-        size_t cleanStart = cleanEnd;
-        while (cleanStart >= 1) {
-            RefCounted* refCounted = memories + cleanStart - 1;
-            if (refCounted->count <= 0) {
-                // Free the memory if unused
-                free(refCounted->memory);
-            } else {
-                // Stop at the first that is referenced
-                break;
-            }
-            cleanStart -= 1;
-        }
-        // Then copy over unreferenced memories with the referenced ones that come after
-        memmove(memories + cleanStart, memories + cleanEnd, (length - cleanEnd) * sizeof(RefCounted));
-        // Remove the cleaned memories from the count
-        length -= cleanEnd - cleanStart;
-        // Loop back to clean the rest of the list
-        cleanEnd = cleanStart;
-    } while (cleanEnd >= 1);
-    // Update the length to the one after cleanup
-    alloc->length = length;
+private enum REF_COUNT_SWAP_FUNC_NAME = "refCountSwap";
+private enum REF_COUNT_SWAP_FUNC_IMPL =
+`void ` ~ REF_COUNT_SWAP_FUNC_NAME ~ `(RefCountAlloc* alloc, void* oldPtr, void* new) {
+    void* old = *(void**) oldPtr;
+    // Increment the reference count of the new memory
+    refCountHold(alloc, new);
+    // Decrement the reference count of the old memory
+    refCountRelease(alloc, old);
+    // Swap the references
+    *(void**) oldPtr = new;
 }
 `;
 
 private enum APPEND_STRING_FUNC_NAME = "appendStr";
 private enum APPEND_STRING_FUNC_IMPL =
 `char* ` ~ APPEND_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc, char* strA, char* strB) {
+    refCountHold(alloc, strA);
+    refCountHold(alloc, strB);
     size_t lengthA = strlen(strA);
     char* str = malloc((lengthA + strlen(strB) + 1) * sizeof(char));
     strcpy(str, strA);
     strcpy(str + lengthA, strB);
-    ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(alloc, str);
+    refCountRelease(alloc, strA);
+    refCountRelease(alloc, strB);
+    refCountAdd(alloc, str);
     return str;
 }
 `;
@@ -358,6 +370,7 @@ private enum REPEAT_STRING_FUNC_IMPL =
         printf("Cannot repeat a string less than 0 times\n");
         exit(1);
     }
+    refCountHold(alloc, str);
     size_t length = strlen(str);
     char* result = malloc((length * times + 1) * sizeof(char));
     char* p = result;
@@ -366,7 +379,8 @@ private enum REPEAT_STRING_FUNC_IMPL =
         p += length;
     }
     *p = '\0';
-    ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(alloc, result);
+    refCountRelease(alloc, str);
+    refCountAdd(alloc, result);
     return result;
 }
 `;
@@ -414,8 +428,17 @@ private enum READ_STRING_FUNC_IMPL =
         str = "";
     } else {
         str[length - 1] = '\0';
-        ` ~ REF_COUNT_ADD_FUNC_NAME ~ `(alloc, str);
+        refCountAdd(alloc, str);
     }
     return str;
+}
+`;
+
+private enum PRINT_STRING_FUNC_NAME = "printString";
+private enum PRINT_STRING_FUNC_IMPL =
+`void ` ~ PRINT_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc, char* str) {
+    refCountHold(alloc, str);
+    printf("%s", str);
+    refCountRelease(alloc, str);
 }
 `;
