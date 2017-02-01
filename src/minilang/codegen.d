@@ -58,7 +58,7 @@ public void codegen(Program program, SourcePrinter printer) {
     printer.print("int main(int argc, char** argv) ");
     // Then open the body
     printer.print("{").newLine().indent();
-    // Declare the string list variable to manage allocation, with a unique name
+    // Declare the allocator variable with a unique name
     auto allocatorName = program.declarations.map!(decl => decl.name.getSource()).uniqueToAll();
     printer.print("RefCountAlloc ").print(allocatorName).print(";").newLine()
             .print("memset(&").print(allocatorName).print(", 0, sizeof(RefCountAlloc));").newLine();
