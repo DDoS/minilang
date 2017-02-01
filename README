@@ -55,6 +55,6 @@ from "transform.d".
 "symbol.d" is the type checker. It works much like the printer, but instead of printing it generates a symbol table.
 
 "codegen.d" is the code generator. It works much like the printer, but it prints equivalent C code. It also contains
-constant string at the end of the module for the supporting C functions.
+constant strings at the end of the module for the supporting C functions.
 
 "util.d" contains a few functions used throughout.
