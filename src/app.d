@@ -170,7 +170,7 @@ private int compileCommand(string[] args) {
     auto inputSource = args[0];
     // If no output source was specified, use the input one without an extension
     if (outputBin is null) {
-        outputBin = inputSource.setExtension("");
+        outputBin = inputSource.setExtension(".out");
     }
     // Get the source text
     string source = void;
