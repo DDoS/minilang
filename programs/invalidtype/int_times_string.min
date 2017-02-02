@@ -4,4 +4,4 @@ var i: int;
 read s;
 read i;
 
-print (s + "\n") * i;
+print i * s;

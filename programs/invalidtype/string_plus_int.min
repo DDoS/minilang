@@ -1,0 +1,7 @@
+var s: string;
+var i: int;
+
+read s;
+read i;
+
+print (s + "\n") + i;
