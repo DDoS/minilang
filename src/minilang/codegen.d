@@ -249,6 +249,10 @@ public string uniqueToAll(Range)(Range strings) if (isInputRange!Range && is(Ele
         throw new Error("Not a valid identifier character: \\" ~ (cast(ubyte) c).to!string());
     }
 
+    if (strings.empty) {
+        return "a";
+    }
+
     char[] buffer;
     size_t i = 0;
     foreach (s; strings) {
