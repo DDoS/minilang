@@ -85,13 +85,14 @@ public void prettyPrint(NegateExpr negateExpr, SourcePrinter printer) {
 }
 
 public void prettyPrintBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, SourcePrinter printer) {
-    // Check if the left or right children have lower precenence (if so we must use parentheses)
+    // Check if the left or right children have lower precedence (if so we must use parentheses)
     static if (is(BinaryExpr == MultiplyExpr) || is(BinaryExpr == DivideExpr)) {
         auto parenthesisLeft = cast(AddExpr) binaryExpr.left || cast(SubtractExpr) binaryExpr.left;
         auto parenthesisRight = cast(AddExpr) binaryExpr.right || cast(SubtractExpr) binaryExpr.right;
     } else {
         auto parenthesisLeft = false;
-        auto parenthesisRight = false;
+        // Add parentheses to the right child if the precedence is the same to respect associativity
+        auto parenthesisRight = cast(AddExpr) binaryExpr.right || cast(SubtractExpr) binaryExpr.right;
     }
     // Print the left child
     if (parenthesisLeft) {
