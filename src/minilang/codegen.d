@@ -49,7 +49,8 @@ public void codegen(Program program, SourcePrinter printer) {
     printer.print(REF_COUNT_RELEASE_FUNC_IMPL).newLine();
     printer.print(REF_COUNT_SWAP_FUNC_IMPL).newLine();
     printer.print(APPEND_STRING_FUNC_IMPL).newLine();
-    printer.print(REPEAT_STRING_FUNC_IMPL).newLine();
+    printer.print(REPEAT_LEFT_STRING_FUNC_IMPL).newLine();
+    printer.print(REPEAT_RIGHT_STRING_FUNC_IMPL).newLine();
     printer.print(READ_INT_FUNC_IMPL).newLine();
     printer.print(READ_FLOAT_FUNC_IMPL).newLine();
     printer.print(READ_STRING_FUNC_IMPL).newLine();
@@ -180,11 +181,15 @@ public void codegen(NegateExpr negateExpr, SourcePrinter printer, string allocat
 
 public void codegenBinary(BinaryExpr, string operator)(BinaryExpr binaryExpr, SourcePrinter printer, string allocatorName) {
     // Special cases for string operations, which are implemented as functions
-    if (binaryExpr.left.type == Type.STRING) {
+    if (binaryExpr.type == Type.STRING) {
         static if (is(BinaryExpr == AddExpr)) {
             printer.print(APPEND_STRING_FUNC_NAME);
         } else {
-            printer.print(REPEAT_STRING_FUNC_NAME);
+            if (binaryExpr.left.type == Type.STRING) {
+                printer.print(REPEAT_LEFT_STRING_FUNC_NAME);
+            } else {
+                printer.print(REPEAT_RIGHT_STRING_FUNC_NAME);
+            }
         }
         printer.print("(&").print(allocatorName).print(", ");
         binaryExpr.left.transform!codegen(printer, allocatorName);
@@ -364,9 +369,9 @@ private enum APPEND_STRING_FUNC_IMPL =
 }
 `;
 
-private enum REPEAT_STRING_FUNC_NAME = "repeatStr";
-private enum REPEAT_STRING_FUNC_IMPL =
-`char* ` ~ REPEAT_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc, char* str, int times) {
+private enum REPEAT_LEFT_STRING_FUNC_NAME = "repeatLeftStr";
+private enum REPEAT_LEFT_STRING_FUNC_IMPL =
+`char* ` ~ REPEAT_LEFT_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc, char* str, int times) {
     if (times < 0) {
         printf("Cannot repeat a string less than 0 times\n");
         exit(1);
@@ -383,6 +388,13 @@ private enum REPEAT_STRING_FUNC_IMPL =
     refCountRelease(alloc, str);
     refCountAdd(alloc, result);
     return result;
+}
+`;
+
+private enum REPEAT_RIGHT_STRING_FUNC_NAME = "repeatRightStr";
+private enum REPEAT_RIGHT_STRING_FUNC_IMPL =
+`char* ` ~ REPEAT_RIGHT_STRING_FUNC_NAME ~ `(RefCountAlloc* alloc, int times, char* str) {
+    return repeatLeftStr(alloc, str, times);
 }
 `;
 

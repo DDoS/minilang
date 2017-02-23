@@ -153,8 +153,9 @@ public void checkTypeBinary(BinaryExpr)(BinaryExpr binaryExpr, SymbolTable symbo
     }
     // Allow multiplying a STRING by an INT
     static if (is(BinaryExpr == MultiplyExpr)) {
-        if (leftType == Type.STRING && rightType == Type.INT) {
-            binaryExpr.type = leftType;
+        if (leftType == Type.STRING && rightType == Type.INT
+                || leftType == Type.INT && rightType == Type.STRING) {
+            binaryExpr.type = Type.STRING;
             return;
         }
     }
