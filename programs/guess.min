@@ -1,6 +1,6 @@
 var actual: int;
 var guess: int;
-var wrong: float;
+var wrong: int;
 var guessCount: int;
 
 actual = 42;

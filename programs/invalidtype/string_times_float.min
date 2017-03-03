@@ -1,7 +1,0 @@
-var s: string;
-var f: float;
-
-read s;
-read f;
-
-print s * f;

@@ -12,7 +12,7 @@ i = 0;
 // Multiply the factorial of zero for each i in n
 while n - i do
 	i = i + 1;
-    factN = factN * i * 1.0;
+    factN = factN * i;
 done
 // Print the result
 print factN;
