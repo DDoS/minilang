@@ -1,33 +1,22 @@
 #/bin/bash
 
+# The D compiler to use
+DC="dmd"
+
 # Create the bin directory if missing
 mkdir -p bin
 
 # Search for an existing DMD installation
-INSTALLED_DMD="$(type -p dmd)"
+DC_PATH="$(type -p $DC)"
 
-# Find the DMD build for the OS
-if [[ -n "$INSTALLED_DMD" ]]; then
-    # Use the installed DMD
-    DMD="$INSTALLED_DMD"
-elif [[ "$OSTYPE" == "linux"* ]]; then
-    # Check that we are on 64bit linux
-    if [[ `getconf LONG_BIT` != "64" ]]; then
-        echo "Can only compile D for 64bit linux"
-        exit 1
-    fi
-    # Use the packaged DMD
-    DMD="./dmd2/linux/bin64/dmd"
-else
-    echo "Cannot compile D for OS: $OSTYPE"
+# Check if DMD is installed
+if [[ -z "$DC_PATH" ]]; then
+    echo "No D compiler named \"$DC\" found"
     exit 1
 fi
 
-# This is the DMD command to build with unit tests into the bin folder
-DMD_RUN="$DMD -unittest -odbin -ofbin/minilang"
-
 # Invoke DMD to compile to the bin directory
-eval "$DMD_RUN \
+eval "$DC_PATH -unittest -odbin -ofbin/minilang \
     src/app.d \
     src/minilang/util.d \
     src/minilang/chars.d \
